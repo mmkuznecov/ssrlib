@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from sslib import Pipeline, Config
-from sslib.datasets import CelebADataset, ImageNet100Dataset, SynthTestDataset
+from sslib.datasets import SynthTestDataset
 from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
 from sslib.processing import CovarianceProcessor, ZCAProcessor
 
@@ -104,7 +104,7 @@ def configuration_driven_pipeline():
         processors.append(ZCAProcessor(epsilon=config.get('processing.zca_epsilon')))
     
     pipeline = Pipeline([
-        ('dataset', SynthTestDataset(tensors_num=30, tensor_shape=(3, 48, 48), seed=123)),
+        ('dataset', SynthTestDataset(tensors_num=30, tensor_shape=(3, 224, 224), seed=123)),
         ('embedders', embedders),
         ('processors', processors)
     ], config=config)
@@ -123,7 +123,7 @@ def analyze_results():
     
     # Simple pipeline for analysis
     pipeline = Pipeline([
-        ('dataset', CelebADataset(root='./data/celeba')),
+        ('dataset', SynthTestDataset(tensors_num=30, tensor_shape=(3, 224, 224), seed=123)),
         ('embedder', DINOv2Embedder('dinov2_vits14')),  # Smaller model
         ('processors', [CovarianceProcessor(), ZCAProcessor()])
     ])
@@ -131,7 +131,7 @@ def analyze_results():
     results = pipeline.execute()
     
     # Analyze embeddings
-    dataset_name = "CelebA"
+    dataset_name = "SynthTest"
     embedder_name = "DINOv2_dinov2_vits14"
     
     embeddings = results.get_embeddings(dataset_name, embedder_name)
