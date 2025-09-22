@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from PIL import Image
 from torchvision import transforms
-from typing import Iterator, Dict, Any, Optional
+from typing import Iterator, Dict, Any, Optional, Tuple, List, Union
 import requests
 from pathlib import Path
 
@@ -51,6 +51,7 @@ class CelebADataset(BaseDataset):
         
         # Will be loaded after download/check
         self.data = None
+        self.attr_names = None
         
         # Update metadata
         self._metadata.update({
@@ -69,11 +70,7 @@ class CelebADataset(BaseDataset):
         self._downloaded = True
         
     def _check_dataset(self) -> bool:
-        """Check if dataset is already downloaded and properly structured.
-        
-        Returns:
-            bool: True if dataset exists and is complete, False otherwise
-        """
+        """Check if dataset is already downloaded and properly structured."""
         required_files = [self.split_csv, self.attr_csv]
         
         # Check if all required files exist and images directory exists
@@ -111,8 +108,6 @@ class CelebADataset(BaseDataset):
         
         try:
             print("Downloading CelebA dataset from Kaggle...")
-            print("Note: This requires Kaggle API authentication.")
-            print("Please ensure you have ~/.kaggle/kaggle.json with your API credentials.")
             
             # Download with requests and show progress
             response = requests.get(kaggle_url, stream=True)
@@ -209,10 +204,11 @@ class CelebADataset(BaseDataset):
         
         # Load attributes
         attr_df = pd.read_csv(self.attr_csv)
+        self.attr_names = list(attr_df.columns[1:])  # Store all attribute names
         
         # Validate task name
-        if self.task_name not in attr_df.columns[1:]:
-            raise ValueError(f"Unknown task {self.task_name}")
+        if self.task_name not in self.attr_names:
+            raise ValueError(f"Unknown task {self.task_name}. Available: {self.attr_names}")
             
         # Merge data
         self.data = pd.merge(
@@ -222,26 +218,62 @@ class CelebADataset(BaseDataset):
             how="left",
         )
         
+    def __getitem__(self, idx: Union[int, slice]) -> Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]:
+        """Get item(s) by index.
+        
+        Args:
+            idx: Index or slice
+            
+        Returns:
+            Single tuple (image, target) or list of tuples for slice
+        """
+        if self.data is None:
+            self.download()
+            
+        if isinstance(idx, slice):
+            # Handle slice
+            indices = range(*idx.indices(len(self.data)))
+            return [self._get_single_item(i) for i in indices]
+        else:
+            # Handle single index
+            return self._get_single_item(idx)
+    
+    def _get_single_item(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get a single item by index."""
+        if idx >= len(self.data) or idx < -len(self.data):
+            raise IndexError(f"Index {idx} out of range for dataset of size {len(self.data)}")
+            
+        # Handle negative indexing
+        if idx < 0:
+            idx = len(self.data) + idx
+            
+        row = self.data.iloc[idx]
+        img_path = self.images_dir / row["image_id"]
+        
+        if not img_path.exists():
+            raise FileNotFoundError(f"Image {img_path} not found")
+            
+        # Load and transform image
+        image = Image.open(img_path).convert("RGB")
+        if self.transform:
+            image = self.transform(image)
+            
+        # Get target (convert from -1/1 to 0/1 for standard classification)
+        target = torch.tensor(1 if row[self.task_name] == 1 else 0, dtype=torch.long)
+        
+        return image, target
+        
     def __iter__(self) -> Iterator[torch.Tensor]:
-        """Iterate over dataset returning image tensors."""
+        """Iterate over dataset returning image tensors only (for pipeline compatibility)."""
         if self.data is None:
             self.download()
             
         for idx in range(len(self.data)):
-            row = self.data.iloc[idx]
-            img_path = self.images_dir / row["image_id"]
-            
-            if not img_path.exists():
-                print(f"Warning: Image {img_path} not found, skipping")
-                continue
-                
             try:
-                image = Image.open(img_path).convert("RGB")
-                if self.transform:
-                    image = self.transform(image)
+                image, _ = self._get_single_item(idx)
                 yield image
-            except Exception as e:
-                print(f"Error loading image {img_path}: {e}")
+            except (FileNotFoundError, Exception) as e:
+                print(f"Warning: Skipping sample {idx}: {e}")
                 continue
                 
     def __len__(self) -> int:
@@ -249,6 +281,51 @@ class CelebADataset(BaseDataset):
         if self.data is None:
             self.download()
         return len(self.data)
+    
+    def __repr__(self) -> str:
+        """String representation of dataset."""
+        return (f"CelebADataset(split='{self.split}', task='{self.task_name}', "
+                f"size={len(self) if self.data is not None else 'Unknown'}, "
+                f"root='{self.root}')")
+        
+    def get_classes(self) -> Dict[str, Any]:
+        """Get class information for the current task."""
+        return {
+            "task_name": self.task_name,
+            "num_classes": 2,
+            "class_names": ["No", "Yes"],
+            "class_to_idx": {"No": 0, "Yes": 1}
+        }
+        
+    def get_all_attributes(self) -> List[str]:
+        """Get list of all available attributes."""
+        if self.attr_names is None:
+            self.download()
+        return self.attr_names.copy()
+        
+    def get_sample_info(self, idx: int) -> Dict[str, Any]:
+        """Get detailed information about a specific sample."""
+        if self.data is None:
+            self.download()
+            
+        if idx >= len(self.data) or idx < -len(self.data):
+            raise IndexError(f"Index {idx} out of range")
+            
+        if idx < 0:
+            idx = len(self.data) + idx
+            
+        row = self.data.iloc[idx]
+        img_path = self.images_dir / row["image_id"]
+        
+        return {
+            "index": idx,
+            "image_id": row["image_id"],
+            "image_path": str(img_path),
+            "target_value": row[self.task_name],
+            "target_class": "Yes" if row[self.task_name] == 1 else "No",
+            "split": self.split,
+            "exists": img_path.exists()
+        }
         
     def get_metadata(self) -> Dict[str, Any]:
         """Get dataset metadata."""
@@ -258,6 +335,7 @@ class CelebADataset(BaseDataset):
                 "num_samples": len(self.data),
                 "image_shape": "(3, 224, 224)",  # After transform
                 "split": self.split,
-                "task_name": self.task_name
+                "task_name": self.task_name,
+                "num_attributes": len(self.attr_names) if self.attr_names else 0
             })
         return metadata

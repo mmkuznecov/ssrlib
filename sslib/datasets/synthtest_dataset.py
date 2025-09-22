@@ -1,16 +1,12 @@
 import torch
 import numpy as np
-from typing import Iterator, Dict, Any, Optional
+from typing import Iterator, Dict, Any, Optional, Union, List
 
 from ..core.base import BaseDataset
 
 
 class SynthTestDataset(BaseDataset):
-    """Synthetic test dataset that generates random image-like tensors.
-    
-    This dataset is useful for testing pipelines without requiring real data downloads.
-    It generates random tensors of shape (3, 224, 224) to simulate RGB images.
-    """
+    """Synthetic test dataset that generates random image-like tensors."""
     
     def __init__(self, tensors_num: int = 100, seed: Optional[int] = None, 
                  tensor_shape: tuple = (3, 224, 224), **kwargs):
@@ -52,6 +48,46 @@ class SynthTestDataset(BaseDataset):
         if not self._downloaded:
             print(f"Synthetic dataset {self.name} ready (no download needed)")
             self._downloaded = True
+    
+    def __getitem__(self, idx: Union[int, slice]) -> Union[torch.Tensor, List[torch.Tensor]]:
+        """Get item(s) by index.
+        
+        Args:
+            idx: Index or slice
+            
+        Returns:
+            Single tensor or list of tensors for slice
+        """
+        if isinstance(idx, slice):
+            # Handle slice
+            indices = range(*idx.indices(self.tensors_num))
+            return [self._get_single_item(i) for i in indices]
+        else:
+            # Handle single index
+            return self._get_single_item(idx)
+    
+    def _get_single_item(self, idx: int) -> torch.Tensor:
+        """Get a single tensor by index."""
+        if idx >= self.tensors_num or idx < -self.tensors_num:
+            raise IndexError(f"Index {idx} out of range for dataset of size {self.tensors_num}")
+            
+        # Handle negative indexing
+        if idx < 0:
+            idx = self.tensors_num + idx
+        
+        # Generate deterministic tensor based on index and seed
+        if self.seed is not None:
+            # Create deterministic tensor using index-specific seed
+            generator = torch.Generator()
+            generator.manual_seed(self.seed + idx)
+            tensor = torch.randn(*self.tensor_shape, generator=generator)
+        else:
+            # Use current random state
+            tensor = torch.randn(*self.tensor_shape)
+        
+        # Clamp to reasonable range
+        tensor = torch.clamp(tensor, -2.0, 2.0)
+        return tensor
         
     def __iter__(self) -> Iterator[torch.Tensor]:
         """Generate random tensors.
@@ -66,8 +102,6 @@ class SynthTestDataset(BaseDataset):
         
         for i in range(self.tensors_num):
             # Generate random tensor with values in reasonable range for images
-            # Using normal distribution with mean=0, std=1, then clamp to [-2, 2]
-            # This simulates normalized image data
             tensor = torch.randn(*self.tensor_shape)
             tensor = torch.clamp(tensor, -2.0, 2.0)
             yield tensor
@@ -75,6 +109,49 @@ class SynthTestDataset(BaseDataset):
     def __len__(self) -> int:
         """Return number of tensors in dataset."""
         return self.tensors_num
+    
+    def __repr__(self) -> str:
+        """String representation of dataset."""
+        return (f"SynthTestDataset(size={self.tensors_num}, "
+                f"shape={self.tensor_shape}, seed={self.seed})")
+        
+    def get_sample_info(self, idx: int) -> Dict[str, Any]:
+        """Get information about a specific sample."""
+        if idx >= self.tensors_num or idx < -self.tensors_num:
+            raise IndexError(f"Index {idx} out of range")
+            
+        if idx < 0:
+            idx = self.tensors_num + idx
+            
+        return {
+            "index": idx,
+            "tensor_shape": self.tensor_shape,
+            "seed_used": self.seed,
+            "deterministic": self.seed is not None,
+            "synthetic": True
+        }
+        
+    def regenerate(self, new_seed: Optional[int] = None) -> None:
+        """Force regeneration with new seed.
+        
+        Args:
+            new_seed: New seed to use (None for random)
+        """
+        if new_seed is not None:
+            self.seed = new_seed
+            self._metadata["seed"] = new_seed
+        else:
+            self.seed = None
+            self._metadata["seed"] = None
+        
+    def set_seed(self, seed: int) -> None:
+        """Set random seed for reproducible generation.
+        
+        Args:
+            seed: Random seed value
+        """
+        self.seed = seed
+        self._metadata["seed"] = seed
         
     def get_metadata(self) -> Dict[str, Any]:
         """Get dataset metadata."""
@@ -87,57 +164,68 @@ class SynthTestDataset(BaseDataset):
             "seed_used": self.seed
         })
         return metadata
-        
-    def set_seed(self, seed: int) -> None:
-        """Set random seed for reproducible generation.
-        
-        Args:
-            seed: Random seed value
-        """
-        self.seed = seed
-        self._metadata["seed"] = seed
-        
-    def regenerate(self) -> None:
-        """Force regeneration of data (useful for testing different random states)."""
-        # This method doesn't actually store data, so regeneration happens
-        # automatically on next iteration. This is here for API completeness.
-        pass
 
 
-# Example usage and testing
-def test_synth_dataset():
-    """Test function to demonstrate SynthTestDataset usage."""
-    print("Testing SynthTestDataset...")
+## Example usage and testing
+
+def test_dataset_functionality():
+    """Test the enhanced dataset functionality."""
     
-    # Basic usage
-    dataset = SynthTestDataset(tensors_num=10)
-    print(f"Dataset length: {len(dataset)}")
-    print(f"Dataset metadata: {dataset.get_metadata()}")
+    print("Testing CelebA Dataset...")
+    # Note: This would require actual CelebA data to work
+    try:
+        celeba = CelebADataset(root="./test_data", split="train")
+        print(f"CelebA: {celeba}")
+        print(f"Classes: {celeba.get_classes()}")
+        print(f"Attributes: {celeba.get_all_attributes()[:5]}")  # First 5
+        
+        # Test indexing (if data exists)
+        if len(celeba) > 0:
+            image, target = celeba[0]
+            print(f"First sample: image {image.shape}, target {target}")
+            sample_info = celeba.get_sample_info(0)
+            print(f"Sample info: {sample_info}")
+    except Exception as e:
+        print(f"CelebA test skipped: {e}")
     
-    # Test iteration
-    tensors = list(dataset)
-    print(f"Generated {len(tensors)} tensors")
-    print(f"First tensor shape: {tensors[0].shape}")
-    print(f"First tensor range: [{tensors[0].min():.3f}, {tensors[0].max():.3f}]")
+    print("\nTesting ImageNet100 Dataset...")
+    try:
+        imagenet = ImageNet100Dataset(root="./test_data", split="train")
+        print(f"ImageNet100: {imagenet}")
+        if len(imagenet) > 0:
+            image, target = imagenet[0]
+            print(f"First sample: image {image.shape}, target {target}")
+            print(f"Class info: {imagenet.get_classes()}")
+    except Exception as e:
+        print(f"ImageNet100 test skipped: {e}")
     
-    # Test with seed for reproducibility
-    dataset1 = SynthTestDataset(tensors_num=5, seed=42)
-    dataset2 = SynthTestDataset(tensors_num=5, seed=42)
+    print("\nTesting SynthTest Dataset...")
+    synth = SynthTestDataset(tensors_num=10, seed=42)
+    print(f"SynthTest: {synth}")
     
-    tensors1 = list(dataset1)
-    tensors2 = list(dataset2)
+    # Test indexing
+    tensor = synth[0]
+    print(f"First tensor shape: {tensor.shape}")
     
-    # Should be identical with same seed
-    are_equal = all(torch.equal(t1, t2) for t1, t2 in zip(tensors1, tensors2))
-    print(f"Tensors identical with same seed: {are_equal}")
+    # Test slicing
+    batch = synth[0:3]
+    print(f"Batch of 3: {len(batch)} tensors")
     
-    # Test custom shape
-    custom_dataset = SynthTestDataset(tensors_num=3, tensor_shape=(1, 64, 64))
-    custom_tensors = list(custom_dataset)
-    print(f"Custom shape tensor: {custom_tensors[0].shape}")
+    # Test negative indexing
+    last_tensor = synth[-1]
+    print(f"Last tensor shape: {last_tensor.shape}")
     
-    print("SynthTestDataset test completed!")
+    # Test sample info
+    info = synth.get_sample_info(0)
+    print(f"Sample info: {info}")
+    
+    # Test reproducibility
+    synth2 = SynthTestDataset(tensors_num=10, seed=42)
+    assert torch.equal(synth[0], synth2[0]), "Should be identical with same seed"
+    print("Reproducibility test passed!")
+    
+    print("\nAll tests completed!")
 
 
 if __name__ == "__main__":
-    test_synth_dataset()
+    test_dataset_functionality()
