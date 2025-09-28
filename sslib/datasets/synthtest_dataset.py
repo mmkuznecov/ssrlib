@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from typing import Iterator, Dict, Any, Optional, Union, List
 
-from ..core.base import BaseDataset
+from .base import BaseDataset
 
 
 class SynthTestDataset(BaseDataset):

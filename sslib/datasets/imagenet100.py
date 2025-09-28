@@ -8,7 +8,7 @@ from PIL import Image
 from torchvision import transforms
 import requests
 
-from ..core.base import BaseDataset
+from .base import BaseDataset
 
 
 class ImageNet100Dataset(BaseDataset):

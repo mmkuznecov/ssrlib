@@ -7,7 +7,7 @@ from typing import Iterator, Dict, Any, Optional, Tuple, List, Union
 import requests
 from pathlib import Path
 
-from ..core.base import BaseDataset
+from .base import BaseDataset
 
 
 class CelebADataset(BaseDataset):
