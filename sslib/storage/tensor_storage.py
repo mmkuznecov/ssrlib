@@ -30,13 +30,12 @@ class TensorStorage:
 
         Args:
             storage_dir (str): Directory where the storage will be created or loaded from.
-            description (str): Optional description of the storage
+            description (str): Optional description of the storage (used only for new storage)
             chunk_size (Optional[int]): Size of each chunk in bytes. If None, will be loaded from metadata
                                       or set to default value.
             return_metadata (bool): If True, __getitem__ will return (tensor, metadata) pairs
         """
         self.storage_dir = storage_dir
-        self.description = description
         self.return_metadata = return_metadata
         self.chunks_dir = os.path.join(storage_dir, "chunks")
         self.metadata_dir = os.path.join(storage_dir, "metadata")
@@ -49,10 +48,15 @@ class TensorStorage:
 
         self.metadata = self._load_metadata()
 
+        # Set description: use saved description if available, otherwise use parameter
+        self.description = self.metadata.get("description", description)
+
         # Set chunk size with priority: provided > metadata > default
         default_chunk_size = 3 * 2**20 * np.dtype(np.float32).itemsize
-        self.chunk_size = chunk_size or self.metadata.get(
-            "chunk_size", default_chunk_size
+        self.chunk_size = (
+            chunk_size 
+            or self.metadata.get("chunk_size") 
+            or default_chunk_size
         )
 
         self.loaded_chunks = {}
@@ -214,11 +218,14 @@ class TensorStorage:
             for chunk_file in os.listdir(self.chunks_dir):
                 total_size += os.path.getsize(os.path.join(self.chunks_dir, chunk_file))
 
+        # Ensure chunk_size is never None for calculations
+        chunk_size = self.chunk_size or (3 * 2**20 * np.dtype(np.float32).itemsize)
+
         info = {
             "storage_dir": self.storage_dir,
             "description": self.description,
             "num_tensors": len(self),
-            "chunk_size_mb": self.chunk_size / (1024 * 1024),
+            "chunk_size_mb": chunk_size / (1024 * 1024),
             "total_size_mb": total_size / (1024 * 1024),
         }
 
@@ -241,6 +248,13 @@ class TensorStorage:
         Returns:
             Optional[np.ndarray]: The tensor if found, None otherwise
         """
+        # Check if the parameter exists in the metadata DataFrame
+        if self.metadata_df is None or self.metadata_df.empty:
+            return None
+        
+        if param_name not in self.metadata_df.columns:
+            return None  # Parameter doesn't exist
+        
         matches = self.metadata_df[self.metadata_df[param_name] == param_value]
         if len(matches) == 0:
             return None
@@ -258,6 +272,9 @@ class TensorStorage:
         Returns:
             Dict[str, Any]: Dictionary of parameters
         """
+        if self.metadata_df is None or self.metadata_df.empty:
+            return {}
+        
         matches = self.metadata_df[self.metadata_df["tensor_idx"] == tensor_idx]
         if len(matches) == 0:
             return {}
@@ -274,6 +291,12 @@ class TensorStorage:
         Returns:
             List[np.ndarray]: List of tensors in the batch
         """
+        if self.metadata_df is None or self.metadata_df.empty:
+            return []
+        
+        if "batch_id" not in self.metadata_df.columns:
+            return []
+        
         matches = self.metadata_df[self.metadata_df["batch_id"] == batch_id]
         return [self[idx] for idx in matches["tensor_idx"]]
 
@@ -287,8 +310,14 @@ class TensorStorage:
         Returns:
             List[int]: List of tensor indices matching all criteria
         """
+        if self.metadata_df is None or self.metadata_df.empty:
+            return []
+        
         filtered_df = self.metadata_df
         for key, value in kwargs.items():
+            if key not in filtered_df.columns:
+                # If any key doesn't exist, no matches possible
+                return []
             filtered_df = filtered_df[filtered_df[key] == value]
         return filtered_df["tensor_idx"].tolist()
 
@@ -317,6 +346,10 @@ class TensorStorage:
         os.makedirs(os.path.join(storage_dir, "metadata"), exist_ok=True)
 
         storage = TensorStorage(storage_dir, description, chunk_size)
+        
+        # Ensure chunk_size is set to actual value, not None
+        if chunk_size is None:
+            chunk_size = storage.chunk_size
 
         logging.info(f"Creating storage in directory: {storage_dir}")
         logging.info(f"Chunk size: {storage.chunk_size / (1024 * 1024):.2f} MB")
