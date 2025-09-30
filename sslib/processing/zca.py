@@ -2,7 +2,7 @@ import numpy as np
 from typing import Dict, Any
 from scipy.linalg import eigh
 
-from ..core.base import BaseProcessor
+from .base import BaseProcessor
 
 
 class ZCAProcessor(BaseProcessor):

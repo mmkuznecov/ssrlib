@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Dict, Any, Optional
-from ..core.base import BaseProcessor
+from .base import BaseProcessor
 
 
 class LeverageScoresProcessor(BaseProcessor):
