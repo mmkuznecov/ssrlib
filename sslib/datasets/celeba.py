@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from PIL import Image
 from torchvision import transforms
-from typing import Iterator, Dict, Any, Optional, Tuple, List, Union
+from typing import Iterator, Dict, Any, Optional, Tuple, List, Union, ClassVar
 import requests
 from pathlib import Path
 
@@ -12,6 +12,20 @@ from .base import BaseDataset
 
 class CelebADataset(BaseDataset):
     """CelebA Dataset for SSLib framework."""
+    
+    # Class-level metadata
+    _dataset_category: ClassVar[str] = "vision"
+    _dataset_modality: ClassVar[str] = "vision"
+    _dataset_properties: ClassVar[Dict[str, Any]] = {
+        "num_attributes": 40,
+        "image_format": "jpg",
+        "default_image_size": (178, 218),
+        "processed_image_size": (224, 224),
+        "num_identities": 10177,
+        "total_images": 202599,
+        "supports_multi_label": True,
+        "task_type": "binary_classification"
+    }
     
     def __init__(self, root: str = "data", split: str = "train", task_name: str = "Attractive", 
                  transform: Optional[transforms.Compose] = None, **kwargs):
@@ -219,23 +233,14 @@ class CelebADataset(BaseDataset):
         )
         
     def __getitem__(self, idx: Union[int, slice]) -> Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]:
-        """Get item(s) by index.
-        
-        Args:
-            idx: Index or slice
-            
-        Returns:
-            Single tuple (image, target) or list of tuples for slice
-        """
+        """Get item(s) by index."""
         if self.data is None:
             self.download()
             
         if isinstance(idx, slice):
-            # Handle slice
             indices = range(*idx.indices(len(self.data)))
             return [self._get_single_item(i) for i in indices]
         else:
-            # Handle single index
             return self._get_single_item(idx)
     
     def _get_single_item(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -243,7 +248,6 @@ class CelebADataset(BaseDataset):
         if idx >= len(self.data) or idx < -len(self.data):
             raise IndexError(f"Index {idx} out of range for dataset of size {len(self.data)}")
             
-        # Handle negative indexing
         if idx < 0:
             idx = len(self.data) + idx
             
@@ -333,7 +337,7 @@ class CelebADataset(BaseDataset):
         if self.data is not None:
             metadata.update({
                 "num_samples": len(self.data),
-                "image_shape": "(3, 224, 224)",  # After transform
+                "image_shape": "(3, 224, 224)",
                 "split": self.split,
                 "task_name": self.task_name,
                 "num_attributes": len(self.attr_names) if self.attr_names else 0

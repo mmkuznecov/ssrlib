@@ -1,11 +1,9 @@
-"""Dataset implementations for SSLib with automatic discovery."""
-
 import importlib
 import inspect
 import pkgutil
 import logging
 from pathlib import Path
-from typing import Dict, List, Type, Any, Optional, Tuple
+from typing import Dict, List, Type, Any, Optional
 import warnings
 
 # Set up logging for discovery process
@@ -73,27 +71,13 @@ class DatasetRegistry:
         return list(self._datasets.keys())
     
     def list_by_category(self, category: str = None) -> Dict[str, List[str]]:
-        """List datasets by category.
-        
-        Args:
-            category: Specific category to list, or None for all
-            
-        Returns:
-            Dictionary of category -> dataset names
-        """
+        """List datasets by category."""
         if category:
             return {category: self._categories.get(category, [])}
         return self._categories.copy()
     
     def list_by_modality(self, modality: str = None) -> Dict[str, List[str]]:
-        """List datasets by modality.
-        
-        Args:
-            modality: Specific modality to list, or None for all
-            
-        Returns:
-            Dictionary of modality -> dataset names
-        """
+        """List datasets by modality."""
         modality_groups = {}
         for name, mod in self._modalities.items():
             if mod not in modality_groups:
@@ -105,19 +89,11 @@ class DatasetRegistry:
         return modality_groups
     
     def get_dataset_info(self, name: str) -> Dict[str, Any]:
-        """Get comprehensive information about a dataset.
-        
-        Args:
-            name: Dataset name
-            
-        Returns:
-            Dictionary with dataset information
-        """
+        """Get comprehensive information about a dataset."""
         dataset_class = self.get_dataset(name)
         if not dataset_class:
             return {}
         
-        # Extract class information
         info = {
             "name": name,
             "class": dataset_class.__name__,
@@ -143,14 +119,6 @@ class DatasetRegistry:
             }
         except Exception as e:
             info["parameters"] = f"Error extracting parameters: {e}"
-        
-        # Try to extract dataset-specific metadata
-        try:
-            # Look for class-level metadata attributes
-            if hasattr(dataset_class, '_dataset_info'):
-                info.update(dataset_class._dataset_info)
-        except Exception:
-            pass
         
         return info
     
@@ -210,114 +178,6 @@ def extract_description(cls: Type) -> str:
     return "No description available."
 
 
-def categorize_dataset(cls: Type[BaseDataset]) -> str:
-    """Determine category for a dataset.
-    
-    Args:
-        cls: Dataset class
-        
-    Returns:
-        Category name
-    """
-    class_name = cls.__name__.lower()
-    
-    # Check for synthetic/generated datasets
-    if "synth" in class_name or "test" in class_name or "mock" in class_name:
-        return "synthetic"
-    
-    # Check for vision datasets
-    if any(term in class_name for term in ["celeba", "imagenet", "cifar", "mnist", "coco"]):
-        return "vision"
-    
-    # Check for text datasets
-    if any(term in class_name for term in ["text", "nlp", "bert", "glue", "squad"]):
-        return "text"
-    
-    # Check for audio datasets
-    if any(term in class_name for term in ["audio", "speech", "sound", "music"]):
-        return "audio"
-    
-    return "general"
-
-
-def determine_modality(cls: Type[BaseDataset]) -> str:
-    """Determine data modality for a dataset.
-    
-    Args:
-        cls: Dataset class
-        
-    Returns:
-        Modality string
-    """
-    class_name = cls.__name__.lower()
-    
-    # Check docstring for modality hints
-    if cls.__doc__:
-        doc_lower = cls.__doc__.lower()
-        if any(term in doc_lower for term in ["image", "visual", "vision", "picture"]):
-            return "vision"
-        elif any(term in doc_lower for term in ["text", "language", "nlp", "word"]):
-            return "text"
-        elif any(term in doc_lower for term in ["audio", "speech", "sound", "music"]):
-            return "audio"
-        elif any(term in doc_lower for term in ["synthetic", "generated", "random"]):
-            return "synthetic"
-    
-    # Check class name for modality hints
-    if any(term in class_name for term in ["celeba", "imagenet", "cifar", "mnist", "coco", "vision"]):
-        return "vision"
-    elif any(term in class_name for term in ["text", "nlp", "language"]):
-        return "text"
-    elif any(term in class_name for term in ["audio", "speech", "sound"]):
-        return "audio"
-    elif any(term in class_name for term in ["synth", "test", "mock", "random"]):
-        return "synthetic"
-    
-    return "unknown"
-
-
-def extract_dataset_properties(cls: Type[BaseDataset]) -> Dict[str, Any]:
-    """Extract dataset-specific properties.
-    
-    Args:
-        cls: Dataset class
-        
-    Returns:
-        Dictionary of properties
-    """
-    properties = {}
-    
-    # Check for class-level attributes
-    for attr_name in dir(cls):
-        if attr_name.startswith('_') and attr_name.endswith('_'):
-            continue
-        
-        try:
-            attr_value = getattr(cls, attr_name)
-            if not callable(attr_value) and not inspect.ismethod(attr_value):
-                # Include non-callable class attributes
-                if attr_name in ['default_split', 'default_root', 'requires_download', 'supported_splits']:
-                    properties[attr_name] = attr_value
-        except Exception:
-            continue
-    
-    # Try to extract info from __init__ signature
-    try:
-        sig = inspect.signature(cls.__init__)
-        defaults = {}
-        for name, param in sig.parameters.items():
-            if name in ['self', 'args', 'kwargs']:
-                continue
-            if param.default != param.empty:
-                defaults[f"default_{name}"] = param.default
-        if defaults:
-            properties.update(defaults)
-    except Exception:
-        pass
-    
-    return properties
-
-
 def discover_dataset_classes() -> DatasetRegistry:
     """Discover all dataset classes in the datasets module.
     
@@ -356,11 +216,11 @@ def discover_dataset_classes() -> DatasetRegistry:
                     obj != BaseDataset and
                     obj.__module__ == full_module_name):
                     
-                    # Extract information
+                    # Extract information from class metadata
                     description = extract_description(obj)
-                    category = categorize_dataset(obj)
-                    modality = determine_modality(obj)
-                    properties = extract_dataset_properties(obj)
+                    category = obj.get_dataset_category()
+                    modality = obj.get_dataset_modality()
+                    properties = obj.get_dataset_properties()
                     
                     # Register the dataset
                     registry.register(name, obj, description, category, modality, properties)

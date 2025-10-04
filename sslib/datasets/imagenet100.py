@@ -2,7 +2,7 @@ import os
 import json
 import glob
 from pathlib import Path
-from typing import Iterator, Dict, Any, Optional, List, Tuple, Union
+from typing import Iterator, Dict, Any, Optional, List, Tuple, Union, ClassVar
 import torch
 from PIL import Image
 from torchvision import transforms
@@ -13,6 +13,18 @@ from .base import BaseDataset
 
 class ImageNet100Dataset(BaseDataset):
     """ImageNet100 Dataset for SSLib framework."""
+    
+    # Class-level metadata
+    _dataset_category: ClassVar[str] = "vision"
+    _dataset_modality: ClassVar[str] = "vision"
+    _dataset_properties: ClassVar[Dict[str, Any]] = {
+        "num_classes": 100,
+        "image_format": "JPEG",
+        "processed_image_size": (224, 224),
+        "task_type": "multi_class_classification",
+        "supports_train_val_split": True,
+        "hierarchical_labels": True
+    }
     
     def __init__(self, root: str = "data", split: str = "train", 
                  labels_path: Optional[str] = None,
@@ -80,12 +92,10 @@ class ImageNet100Dataset(BaseDataset):
         # Check if directories have content
         has_content = False
         if has_train or has_val:
-            # Check if there are actual image files
             for pattern in ["train.X*", "val.X"]:
                 for dir_path in glob.glob(str(self.root / pattern)):
                     dir_path = Path(dir_path)
                     if dir_path.is_dir():
-                        # Look for subdirectories with images
                         for subdir in dir_path.iterdir():
                             if subdir.is_dir():
                                 image_files = [f for f in subdir.iterdir() 
@@ -199,15 +209,12 @@ class ImageNet100Dataset(BaseDataset):
         """Organize extracted files into expected structure."""
         import shutil
         
-        # Look for common extraction patterns and reorganize if needed
-        
         # Check if files were extracted to a subdirectory
         subdirs = [d for d in self.root.iterdir() if d.is_dir() and d.name != '__MACOSX']
         
         # If there's only one subdirectory and it contains the dataset, move contents up
         if len(subdirs) == 1:
             subdir = subdirs[0]
-            # Check if this subdirectory contains train/val directories
             subdir_contents = list(subdir.iterdir())
             train_dirs_in_subdir = [d for d in subdir_contents if d.is_dir() and d.name.startswith('train.X')]
             val_dirs_in_subdir = [d for d in subdir_contents if d.is_dir() and d.name.startswith('val.X')]
@@ -222,7 +229,6 @@ class ImageNet100Dataset(BaseDataset):
                         else:
                             target.unlink()
                     shutil.move(str(item), str(target))
-                # Remove empty subdirectory
                 subdir.rmdir()
         
         # Verify expected directories exist
@@ -230,7 +236,6 @@ class ImageNet100Dataset(BaseDataset):
         val_dirs = glob.glob(str(self.root / "val.X*"))
         
         if not train_dirs:
-            # Look for alternative training directory names
             alt_train_dirs = []
             for pattern in ["train*", "Train*", "TRAIN*"]:
                 alt_train_dirs.extend(glob.glob(str(self.root / pattern)))
@@ -244,14 +249,13 @@ class ImageNet100Dataset(BaseDataset):
                     shutil.move(alt_dir, str(target))
         
         if not val_dirs:
-            # Look for alternative validation directory names
             alt_val_dirs = []
             for pattern in ["val*", "Val*", "VAL*", "validation*", "valid*"]:
                 alt_val_dirs.extend(glob.glob(str(self.root / pattern)))
             
             if alt_val_dirs:
                 print("Found alternative validation directory, renaming...")
-                alt_dir = alt_val_dirs[0]  # Take first one
+                alt_dir = alt_val_dirs[0]
                 target = self.root / "val.X"
                 print(f"Renaming {Path(alt_dir).name} to val.X")
                 shutil.move(alt_dir, str(target))
@@ -272,14 +276,12 @@ class ImageNet100Dataset(BaseDataset):
         if self.labels_path and os.path.exists(self.labels_path):
             with open(self.labels_path, "r") as f:
                 labels = json.load(f)
-            # Process labels: take first part before comma
             self.synset_to_class = {
                 synset: desc.split(",")[0].strip() 
                 for synset, desc in labels.items()
             }
             self.class_names = sorted(list(set(self.synset_to_class.values())))
         elif self.labels_path is None:
-            # Auto-detect labels path
             labels_path = self.root / "Labels.json"
             if labels_path.exists():
                 self.labels_path = str(labels_path)
@@ -307,12 +309,10 @@ class ImageNet100Dataset(BaseDataset):
         train_dirs = []
         
         if self.combine_train_splits:
-            # Find all train.X* directories
             train_pattern = str(self.root / "train.X*")
             train_dirs = glob.glob(train_pattern)
             train_dirs.sort()
         else:
-            # Use only train.X1 by default
             train_dirs = [str(self.root / "train.X1")]
             
         if not train_dirs:
@@ -340,11 +340,8 @@ class ImageNet100Dataset(BaseDataset):
         for synset_dir in dir_path.iterdir():
             if synset_dir.is_dir():
                 synset_id = synset_dir.name
-                
-                # Get class name from synset ID
                 class_name = self.synset_to_class.get(synset_id, synset_id)
                 
-                # Find all image files in this synset directory
                 for img_path in synset_dir.iterdir():
                     if img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
                         self.samples.append((str(img_path), class_name, synset_id))
@@ -352,10 +349,8 @@ class ImageNet100Dataset(BaseDataset):
     def _create_class_mappings(self):
         """Create class to index mappings."""
         if self.class_names:
-            # Use human-readable class names if available
             self.class_to_idx = {name: idx for idx, name in enumerate(self.class_names)}
         else:
-            # Fall back to synset IDs
             unique_classes = sorted(list(set([sample[1] for sample in self.samples])))
             self.class_names = unique_classes
             self.class_to_idx = {name: idx for idx, name in enumerate(unique_classes)}
@@ -363,23 +358,14 @@ class ImageNet100Dataset(BaseDataset):
         self.idx_to_class = {idx: name for name, idx in self.class_to_idx.items()}
     
     def __getitem__(self, idx: Union[int, slice]) -> Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]:
-        """Get item(s) by index.
-        
-        Args:
-            idx: Index or slice
-            
-        Returns:
-            Single tuple (image, class_index) or list of tuples for slice
-        """
+        """Get item(s) by index."""
         if not self._downloaded:
             self.download()
             
         if isinstance(idx, slice):
-            # Handle slice
             indices = range(*idx.indices(len(self.samples)))
             return [self._get_single_item(i) for i in indices]
         else:
-            # Handle single index
             return self._get_single_item(idx)
     
     def _get_single_item(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -387,7 +373,6 @@ class ImageNet100Dataset(BaseDataset):
         if idx >= len(self.samples) or idx < -len(self.samples):
             raise IndexError(f"Index {idx} out of range for dataset of size {len(self.samples)}")
             
-        # Handle negative indexing
         if idx < 0:
             idx = len(self.samples) + idx
             
@@ -483,8 +468,8 @@ class ImageNet100Dataset(BaseDataset):
         metadata.update({
             "num_samples": len(self.samples),
             "num_classes": len(self.class_names),
-            "class_names": self.class_names[:10],  # First 10 for brevity
-            "image_shape": "(3, 224, 224)",  # After transform
+            "class_names": self.class_names[:10],
+            "image_shape": "(3, 224, 224)",
             "split": self.split,
             "combine_train_splits": self.combine_train_splits
         })
