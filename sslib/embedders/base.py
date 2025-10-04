@@ -3,120 +3,78 @@
 import torch
 import torch.nn as nn
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, Tuple, Union
+from typing import Optional, Dict, Any, ClassVar
 import numpy as np
 import logging
-
-from ..core.base import BaseEmbedder
 
 logger = logging.getLogger(__name__)
 
 
-class ModelWrapper(nn.Module):
-    """Wrapper for different model types to extract embeddings."""
-
-    def __init__(self, model: nn.Module, model_type: str, processor: Optional[Any] = None):
-        """Initialize model wrapper.
-        
-        Args:
-            model: The actual model
-            model_type: Type of model for proper handling
-            processor: Optional processor (e.g., for CLIP)
-        """
-        super().__init__()
-        self.model = model
-        self.model_type = model_type
-        self.processor = processor
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the model.
-        
-        Args:
-            x: Input tensor
-            
-        Returns:
-            Embeddings tensor
-        """
-        if self.model_type == "dinov2":
-            # DINOv2 models
-            return self.model(x)
-        elif self.model_type == "clip":
-            # CLIP model
-            if self.processor is not None:
-                # For CLIP, we need to process images differently
-                return self.model.get_image_features(x)
-            else:
-                return self.model.vision_model(pixel_values=x).pooler_output
-        elif self.model_type == "vicreg":
-            # VICReg models
-            return self.model(x)
-        elif self.model_type == "dino_resnet":
-            # DINO ResNet
-            return self.model(pixel_values=x).pooler_output
-        elif self.model_type == "dino_vit":
-            # DINO ViT
-            outputs = self.model(pixel_values=x)
-            return outputs.last_hidden_state.mean(dim=1)  # Global average pooling
-        else:
-            raise ValueError(f"Unknown model type: {self.model_type}")
-
-
-class SSLibEmbedder(BaseEmbedder):
-    """Base embedder class for SSLib with common functionality."""
+class BaseEmbedder(ABC):
+    """Base class for all embedders in SSLib with self-describing metadata."""
     
-    def __init__(self, name: str, model_type: str, device: str = "cpu", 
-                 batch_size: int = 32, **kwargs):
+    # Class-level metadata - subclasses should override these
+    _embedder_category: ClassVar[str] = "general"
+    _embedder_modality: ClassVar[str] = "unknown"
+    _embedder_properties: ClassVar[Dict[str, Any]] = {}
+    
+    def __init__(self, name: str, device: str = "cpu", batch_size: int = 32, **kwargs):
         """Initialize embedder.
         
         Args:
             name: Model name
-            model_type: Type of model for proper handling
-            device: Device to use
-            batch_size: Default batch size
+            device: Device to use ('cpu' or 'cuda')
+            batch_size: Default batch size for processing
             **kwargs: Additional configuration
         """
-        super().__init__(name, device, **kwargs)
-        self.model_type = model_type
+        self.name = name
+        self.device = torch.device(device)
         self.batch_size = batch_size
-        self.wrapped_model: Optional[ModelWrapper] = None
+        self.model = None
+        self._loaded = False
+        self._metadata = {
+            "category": self.get_embedder_category(),
+            "modality": self.get_embedder_modality()
+        }
+        self._metadata.update(kwargs)
         
+    @abstractmethod
+    def load_model(self) -> None:
+        """Load the pretrained model."""
+        pass
+    
+    @abstractmethod
     def forward(self, batch: torch.Tensor) -> torch.Tensor:
-        """Extract embeddings from batch.
+        """Extract embeddings from a batch.
         
         Args:
-            batch: Input tensor of shape (batch_size, ...)
+            batch: Input tensor
             
         Returns:
-            Embeddings tensor of shape (batch_size, embedding_dim)
+            Embeddings tensor
         """
-        if not self.is_loaded:
-            self.load_model()
+        pass
+    
+    @abstractmethod
+    def get_embedding_dim(self) -> int:
+        """Get the dimension of embeddings produced by this model.
         
-        self.wrapped_model.eval()
-        with torch.no_grad():
-            embeddings = self.wrapped_model(batch)
-            
-            # Handle different output formats
-            if isinstance(embeddings, torch.Tensor):
-                return embeddings
-            elif hasattr(embeddings, "last_hidden_state"):
-                return embeddings.last_hidden_state.mean(dim=1)
-            elif hasattr(embeddings, "pooler_output"):
-                return embeddings.pooler_output
-            else:
-                raise ValueError(f"Unexpected output format: {type(embeddings)}")
+        Returns:
+            Embedding dimension
+        """
+        pass
     
     def embed_dataset(self, dataset, batch_size: Optional[int] = None) -> np.ndarray:
         """Extract embeddings for entire dataset with batching.
         
         Args:
-            dataset: Dataset to embed
-            batch_size: Batch size for processing
+            dataset: Dataset to embed (iterable yielding tensors)
+            batch_size: Batch size for processing (uses default if None)
             
         Returns:
             Embeddings array of shape (n_samples, embedding_dim)
         """
-        if not self.is_loaded:
+        if not self._loaded:
             self.load_model()
         
         batch_size = batch_size or self.batch_size
@@ -147,6 +105,34 @@ class SSLibEmbedder(BaseEmbedder):
         logger.info(f"  Extracted embeddings shape: {result.shape}")
         return result
     
+    def unload_model(self) -> None:
+        """Unload model to free memory."""
+        if self.model is not None:
+            del self.model
+            self.model = None
+        
+        self._loaded = False
+        
+        # Clear GPU cache if using CUDA
+        if self.device.type == "cuda":
+            torch.cuda.empty_cache()
+        
+        logger.info(f"Unloaded model: {self.name}")
+    
+    def get_metadata(self) -> Dict[str, Any]:
+        """Get embedder metadata.
+        
+        Returns:
+            Dictionary with metadata
+        """
+        return {
+            "name": self.name,
+            "device": str(self.device),
+            "loaded": self._loaded,
+            "embedding_dim": self.get_embedding_dim(),
+            **self._metadata
+        }
+    
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the loaded model.
         
@@ -155,65 +141,37 @@ class SSLibEmbedder(BaseEmbedder):
         """
         info = {
             "name": self.name,
-            "model_type": self.model_type,
+            "category": self.get_embedder_category(),
+            "modality": self.get_embedder_modality(),
             "device": str(self.device),
-            "is_loaded": self.is_loaded,
+            "is_loaded": self._loaded,
             "embedding_dim": self.get_embedding_dim(),
         }
         
-        if self.is_loaded and self.wrapped_model is not None:
+        if self._loaded and self.model is not None:
             # Count parameters
-            total_params = sum(p.numel() for p in self.wrapped_model.parameters())
+            total_params = sum(p.numel() for p in self.model.parameters())
             info["total_parameters"] = total_params
             info["trainable_parameters"] = sum(
-                p.numel() for p in self.wrapped_model.parameters() if p.requires_grad
+                p.numel() for p in self.model.parameters() if p.requires_grad
             )
         
         return info
     
-    @abstractmethod
-    def _load_model_implementation(self) -> Tuple[nn.Module, Optional[Any]]:
-        """Load the actual model implementation.
-        
-        Returns:
-            Tuple of (model, optional_processor)
-        """
-        pass
+    @classmethod
+    def get_embedder_category(cls) -> str:
+        """Get embedder category."""
+        return cls._embedder_category
     
-    def load_model(self) -> None:
-        """Load pretrained model."""
-        if self.is_loaded:
-            return
-        
-        logger.info(f"Loading model: {self.name}")
-        
-        try:
-            model, processor = self._load_model_implementation()
-            model = model.to(self.device)
-            model.eval()
-            
-            self.wrapped_model = ModelWrapper(model, self.model_type, processor)
-            self.is_loaded = True
-            
-            logger.info(f"Successfully loaded {self.name}")
-            
-        except Exception as e:
-            logger.error(f"Failed to load model {self.name}: {e}")
-            raise
+    @classmethod
+    def get_embedder_modality(cls) -> str:
+        """Get embedder modality."""
+        return cls._embedder_modality
     
-    def unload_model(self) -> None:
-        """Unload model to free memory."""
-        if self.wrapped_model is not None:
-            del self.wrapped_model
-            self.wrapped_model = None
-        
-        self.is_loaded = False
-        
-        # Clear GPU cache if using CUDA
-        if self.device.type == "cuda":
-            torch.cuda.empty_cache()
-        
-        logger.info(f"Unloaded model: {self.name}")
+    @classmethod
+    def get_embedder_properties(cls) -> Dict[str, Any]:
+        """Get embedder properties."""
+        return cls._embedder_properties.copy()
     
     def __del__(self):
         """Cleanup on deletion."""
@@ -221,3 +179,8 @@ class SSLibEmbedder(BaseEmbedder):
             self.unload_model()
         except:
             pass
+    
+    def __repr__(self) -> str:
+        """String representation."""
+        return (f"{self.__class__.__name__}(name='{self.name}', "
+                f"device='{self.device}', loaded={self._loaded})")

@@ -1,12 +1,26 @@
+"""VICReg embedder implementation."""
+
 import torch
 import torch.nn as nn
-from typing import Dict, Any
+from typing import Dict, Any, ClassVar
 
-from ...core.base import BaseEmbedder
+from ..base import BaseEmbedder
 
 
 class VICRegEmbedder(BaseEmbedder):
     """VICReg embedder for computer vision."""
+    
+    # Class-level metadata
+    _embedder_category: ClassVar[str] = "vision"
+    _embedder_modality: ClassVar[str] = "vision"
+    _embedder_properties: ClassVar[Dict[str, Any]] = {
+        "model_family": "VICReg",
+        "source": "facebookresearch",
+        "self_supervised": True,
+        "variance_invariance_covariance": True,
+        "architecture": "ResNet",
+        "input_size": (224, 224)
+    }
     
     AVAILABLE_MODELS = {
         "resnet50": {"embedding_dim": 2048},
@@ -19,12 +33,16 @@ class VICRegEmbedder(BaseEmbedder):
         
         Args:
             model_name: Name of the VICReg model to use
-            device: Device to run on
+            device: Device to run on ('cpu' or 'cuda')
+            **kwargs: Additional arguments
         """
         super().__init__(f"VICReg_{model_name}", device, **kwargs)
         
         if model_name not in self.AVAILABLE_MODELS:
-            raise ValueError(f"Unknown model {model_name}. Available: {list(self.AVAILABLE_MODELS.keys())}")
+            raise ValueError(
+                f"Unknown model {model_name}. "
+                f"Available: {list(self.AVAILABLE_MODELS.keys())}"
+            )
             
         self.model_name = model_name
         self.embedding_dim = self.AVAILABLE_MODELS[model_name]["embedding_dim"]
@@ -33,8 +51,12 @@ class VICRegEmbedder(BaseEmbedder):
         self._metadata.update({
             "model_name": model_name,
             "embedding_dim": self.embedding_dim,
-            "model_type": "VICReg"
+            "model_family": "VICReg"
         })
+    
+    def get_embedding_dim(self) -> int:
+        """Get embedding dimension."""
+        return self.embedding_dim
         
     def load_model(self) -> None:
         """Load VICReg model from torch hub."""
@@ -63,6 +85,7 @@ class VICRegEmbedder(BaseEmbedder):
         if not self._loaded:
             self.load_model()
             
+        self.model.eval()
         with torch.no_grad():
             embeddings = self.model(batch)
             
