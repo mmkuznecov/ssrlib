@@ -3,12 +3,16 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Installation](#installation)
 - [Framework Architecture](#framework-architecture)
 - [Core Components](#core-components)
 - [Module Discovery System](#module-discovery-system)
 - [Adding New Components](#adding-new-components)
 - [Usage Examples](#usage-examples)
 - [Storage & Caching](#storage--caching)
+- [Best Practices](#best-practices)
+- [Development](#development)
+- [Summary](#summary)
 
 ---
 
@@ -23,6 +27,157 @@
 - **Intelligent Caching**: Built-in storage system for computed embeddings
 - **Modular Architecture**: Easy to extend with new datasets, embedders, and processors
 - **Pipeline Orchestration**: Compose multiple datasets × embedders × processors in one execution
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Python 3.8 or higher
+- pip package manager
+- CUDA-capable GPU (optional, but recommended for faster embedding extraction)
+
+### Basic Installation
+
+Install SSLib using pip:
+
+```bash
+pip install sslib
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/mmkuznecov/sslib.git
+cd sslib
+pip install -e .
+```
+
+### Installation with Optional Dependencies
+
+For development work with all features:
+
+```bash
+pip install -e ".[dev,examples,all]"
+```
+
+Or install specific feature sets:
+
+```bash
+# Development tools only
+pip install -e ".[dev]"
+
+# Example notebooks and visualization
+pip install -e ".[examples]"
+
+# All optional features
+pip install -e ".[all]"
+```
+
+### Using requirements.txt
+
+Alternatively, install all dependencies using requirements.txt:
+
+```bash
+# Basic dependencies
+pip install -r requirements.txt
+
+# Development dependencies
+pip install -r requirements-dev.txt
+```
+
+### Verify Installation
+
+Test your installation:
+
+```python
+import sslib
+from sslib.datasets import list_datasets
+from sslib.embedders import list_embedders
+
+print(f"SSLib version: {sslib.__version__}")
+print(f"Available datasets: {len(list_datasets())}")
+print(f"Available embedders: {len(list_embedders())}")
+```
+
+### GPU Support
+
+SSLib automatically detects and uses CUDA if available. To verify GPU support:
+
+```python
+import torch
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A'}")
+```
+
+To install PyTorch with specific CUDA version:
+
+```bash
+# CUDA 11.8
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# CUDA 12.1
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# CPU only
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+```
+
+### Quick Start
+
+After installation, try this minimal example:
+
+```python
+from sslib import Pipeline
+from sslib.datasets import SynthTestDataset
+from sslib.embedders.cv import DINOv2Embedder
+from sslib.processing import CovarianceProcessor
+
+# Create a simple pipeline
+pipeline = Pipeline([
+    ('dataset', SynthTestDataset(tensors_num=100, seed=42)),
+    ('embedder', DINOv2Embedder('dinov2_vits14')),
+    ('processor', CovarianceProcessor())
+])
+
+# Execute
+results = pipeline.execute()
+
+# Inspect results
+print(f"Embeddings shape: {results.get_embeddings('SynthTest', 'DINOv2_dinov2_vits14').shape}")
+print(f"Execution time: {results.timing['total_time']:.2f}s")
+```
+
+### Troubleshooting
+
+**Problem: ModuleNotFoundError for transformers or torch**
+
+Solution: Ensure all dependencies are installed:
+```bash
+pip install torch transformers huggingface-hub
+```
+
+**Problem: CUDA out of memory**
+
+Solution: Reduce batch size or use CPU:
+```python
+pipeline = Pipeline([...], config=Config({'batch_size': 16, 'device': 'cpu'}))
+```
+
+**Problem: Dataset download fails**
+
+Solution: Check internet connection and try manual download. For CelebA:
+1. Download from https://www.kaggle.com/datasets/jessicali9530/celeba-dataset
+2. Extract to `data/CelebA/`
+
+**Problem: Import errors after installation**
+
+Solution: Reinstall in editable mode:
+```bash
+pip uninstall sslib
+pip install -e .
+```
 
 ---
 
@@ -224,13 +379,10 @@ __all__ = [
 
 ### Benefits
 
-**Zero boilerplate**: Just create a class, it's automatically available
-
-**Self-documenting**: Metadata extracted from class attributes and docstrings
-
-**Type-safe**: Registry ensures type correctness
-
-**Inspectable**: Query available components programmatically
+- **Zero boilerplate**: Just create a class, it's automatically available
+- **Self-documenting**: Metadata extracted from class attributes and docstrings
+- **Type-safe**: Registry ensures type correctness
+- **Inspectable**: Query available components programmatically
 
 ### Discovery API
 
@@ -786,24 +938,41 @@ with open(f"./experiments/{experiment_name}/results.json", 'w') as f:
     json.dump(results.metadata, f, indent=2)
 ```
 
+
 ---
 
 ## Summary
 
 **SSLib** provides a clean, modular framework for self-supervised learning experiments with:
 
-**Automatic discovery** - Add a class file, it's instantly available
+- **Automatic discovery** - Add a class file, it's instantly available
+- **Metadata-driven** - Components self-describe their capabilities
+- **Pipeline orchestration** - Compose complex workflows easily
+- **Intelligent caching** - Never recompute expensive embeddings
+- **Extensible design** - Simple base classes for new components
 
-**Metadata-driven** - Components self-describe their capabilities
+### Next Steps
 
-**Pipeline orchestration** - Compose complex workflows easily
-
-**Intelligent caching** - Never recompute expensive embeddings
-
-**Extensible design** - Simple base classes for new components
-
-**Next Steps:**
 - Add training functionality (TrainingPipeline)
 - Expand embedder collection (audio, multimodal)
 - Add more processors (spectral analysis, representation quality metrics)
 - Develop comprehensive benchmarking suite
+
+---
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Citation
+
+If you use SSLib in your research, please cite:
+
+```bibtex
+@software{sslib2024,
+  author = {Mikhail Kuznetov},
+  title = {SSLib: A Modular Framework for Self-Supervised Learning},
+  year = {2024},
+  url = {https://github.com/mmkuznecov/sslib}
+}
+```
