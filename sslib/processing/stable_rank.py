@@ -20,12 +20,14 @@ class StableRankProcessor(BaseProcessor):
         self.center = bool(center)
         self.epsilon = float(epsilon)
 
-        self._metadata.update({
-            "processor_type": "stable_rank",
-            "center": self.center,
-            "epsilon": self.epsilon,
-            "output_type": "scalar_statistic"
-        })
+        self._metadata.update(
+            {
+                "processor_type": "stable_rank",
+                "center": self.center,
+                "epsilon": self.epsilon,
+                "output_type": "scalar_statistic",
+            }
+        )
 
     def process(self, embeddings: np.ndarray) -> np.ndarray:
         if embeddings.ndim != 2:
@@ -44,12 +46,14 @@ class StableRankProcessor(BaseProcessor):
         denom = max(s1_sq, self.epsilon)
         srank = fro2 / denom if denom > 0 else 0.0
 
-        self._metadata.update({
-            "input_shape": embeddings.shape,
-            "n_vectors": int(embeddings.shape[0]),
-            "n_features": int(embeddings.shape[1]),
-            "frobenius_sq": fro2,
-            "top_singular_sq": s1_sq,
-            "stable_rank": srank
-        })
+        self._metadata.update(
+            {
+                "input_shape": embeddings.shape,
+                "n_vectors": int(embeddings.shape[0]),
+                "n_features": int(embeddings.shape[1]),
+                "frobenius_sq": fro2,
+                "top_singular_sq": s1_sq,
+                "stable_rank": srank,
+            }
+        )
         return np.array([srank], dtype=np.float64)

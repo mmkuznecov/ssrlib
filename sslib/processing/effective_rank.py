@@ -20,12 +20,14 @@ class EffectiveRankProcessor(BaseProcessor):
         self.epsilon = float(epsilon)
         self.center = bool(center)
 
-        self._metadata.update({
-            "processor_type": "effective_rank",
-            "epsilon": self.epsilon,
-            "center": self.center,
-            "output_type": "scalar_statistic"
-        })
+        self._metadata.update(
+            {
+                "processor_type": "effective_rank",
+                "epsilon": self.epsilon,
+                "center": self.center,
+                "output_type": "scalar_statistic",
+            }
+        )
 
     def process(self, embeddings: np.ndarray) -> np.ndarray:
         if embeddings.ndim != 2:
@@ -48,10 +50,12 @@ class EffectiveRankProcessor(BaseProcessor):
             H = -np.sum(p * np.log(p))
             erank = float(np.exp(H))
 
-        self._metadata.update({
-            "input_shape": embeddings.shape,
-            "n_vectors": int(embeddings.shape[0]),
-            "n_features": int(embeddings.shape[1]),
-            "effective_rank": erank
-        })
+        self._metadata.update(
+            {
+                "input_shape": embeddings.shape,
+                "n_vectors": int(embeddings.shape[0]),
+                "n_features": int(embeddings.shape[1]),
+                "effective_rank": erank,
+            }
+        )
         return np.array([erank], dtype=np.float64)

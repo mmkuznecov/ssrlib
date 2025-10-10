@@ -9,9 +9,9 @@ from .base import BaseLoss
 class InfoNCE(BaseLoss):
     """
     InfoNCE (Information Noise Contrastive Estimation) loss for self-supervised learning.
-    
+
     This contrastive loss enforces the embeddings of similar (positive) samples to be close
-    and those of different (negative) samples to be distant. A query embedding is compared 
+    and those of different (negative) samples to be distant. A query embedding is compared
     with one positive key and with one or more negative keys.
 
     References:
@@ -48,13 +48,15 @@ class InfoNCE(BaseLoss):
         >>> output = loss(query, positive_key, negative_keys)
     """
 
-    def __init__(self, 
-                 temperature: float = 0.1, 
-                 reduction: str = 'mean', 
-                 negative_mode: str = 'unpaired',
-                 normalize: bool = True):
+    def __init__(
+        self,
+        temperature: float = 0.1,
+        reduction: str = "mean",
+        negative_mode: str = "unpaired",
+        normalize: bool = True,
+    ):
         """Initialize InfoNCE loss.
-        
+
         Args:
             temperature: Temperature scaling parameter
             reduction: Loss reduction method
@@ -62,29 +64,33 @@ class InfoNCE(BaseLoss):
             normalize: Whether to normalize embeddings
         """
         super().__init__(
-            reduction=reduction, 
-            normalize=normalize, 
+            reduction=reduction,
+            normalize=normalize,
             temperature=temperature,
-            negative_mode=negative_mode
+            negative_mode=negative_mode,
         )
-        
-        assert negative_mode in ['paired', 'unpaired'], \
-            f"Invalid negative_mode: {negative_mode}"
-        
+
+        assert negative_mode in [
+            "paired",
+            "unpaired",
+        ], f"Invalid negative_mode: {negative_mode}"
+
         self.negative_mode = negative_mode
 
-    def forward(self, 
-                query: torch.Tensor, 
-                positive_key: torch.Tensor, 
-                negative_keys: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self,
+        query: torch.Tensor,
+        positive_key: torch.Tensor,
+        negative_keys: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         Forward pass for InfoNCE loss.
-        
+
         Args:
             query: Query embeddings (N, D)
-            positive_key: Positive key embeddings (N, D)  
+            positive_key: Positive key embeddings (N, D)
             negative_keys: Optional negative key embeddings
-            
+
         Returns:
             InfoNCE loss
         """
@@ -95,75 +101,93 @@ class InfoNCE(BaseLoss):
             temperature=self.temperature,
             reduction=self.reduction,
             negative_mode=self.negative_mode,
-            normalize=self.normalize
+            normalize=self.normalize,
         )
 
 
-def info_nce(query: torch.Tensor, 
-             positive_key: torch.Tensor, 
-             negative_keys: Optional[torch.Tensor] = None, 
-             temperature: float = 0.1, 
-             reduction: str = 'mean', 
-             negative_mode: str = 'unpaired',
-             normalize: bool = True) -> torch.Tensor:
+def info_nce(
+    query: torch.Tensor,
+    positive_key: torch.Tensor,
+    negative_keys: Optional[torch.Tensor] = None,
+    temperature: float = 0.1,
+    reduction: str = "mean",
+    negative_mode: str = "unpaired",
+    normalize: bool = True,
+) -> torch.Tensor:
     """
     Functional interface for InfoNCE loss.
-    
+
     Args:
         query: Query embeddings (N, D)
         positive_key: Positive key embeddings (N, D)
         negative_keys: Optional negative key embeddings
         temperature: Temperature scaling parameter
         reduction: Loss reduction method
-        negative_mode: How to handle negative keys ('paired' or 'unpaired') 
+        negative_mode: How to handle negative keys ('paired' or 'unpaired')
         normalize: Whether to normalize embeddings
-        
+
     Returns:
         InfoNCE loss
     """
     # Input validation
     if query.dim() != 2:
-        raise ValueError('<query> must have 2 dimensions.')
+        raise ValueError("<query> must have 2 dimensions.")
     if positive_key.dim() != 2:
-        raise ValueError('<positive_key> must have 2 dimensions.')
+        raise ValueError("<positive_key> must have 2 dimensions.")
     if negative_keys is not None:
-        if negative_mode == 'unpaired' and negative_keys.dim() != 2:
-            raise ValueError("<negative_keys> must have 2 dimensions if <negative_mode> == 'unpaired'.")
-        if negative_mode == 'paired' and negative_keys.dim() != 3:
-            raise ValueError("<negative_keys> must have 3 dimensions if <negative_mode> == 'paired'.")
+        if negative_mode == "unpaired" and negative_keys.dim() != 2:
+            raise ValueError(
+                "<negative_keys> must have 2 dimensions if <negative_mode> == 'unpaired'."
+            )
+        if negative_mode == "paired" and negative_keys.dim() != 3:
+            raise ValueError(
+                "<negative_keys> must have 3 dimensions if <negative_mode> == 'paired'."
+            )
 
     # Check matching number of samples
     if len(query) != len(positive_key):
-        raise ValueError('<query> and <positive_key> must have the same number of samples.')
+        raise ValueError(
+            "<query> and <positive_key> must have the same number of samples."
+        )
     if negative_keys is not None:
-        if negative_mode == 'paired' and len(query) != len(negative_keys):
-            raise ValueError("If negative_mode == 'paired', then <negative_keys> must have the same number of samples as <query>.")
+        if negative_mode == "paired" and len(query) != len(negative_keys):
+            raise ValueError(
+                "If negative_mode == 'paired', then <negative_keys> must have the same number of samples as <query>."
+            )
 
     # Check embedding dimensions match
     if query.shape[-1] != positive_key.shape[-1]:
-        raise ValueError('Vectors of <query> and <positive_key> should have the same number of components.')
+        raise ValueError(
+            "Vectors of <query> and <positive_key> should have the same number of components."
+        )
     if negative_keys is not None:
         if query.shape[-1] != negative_keys.shape[-1]:
-            raise ValueError('Vectors of <query> and <negative_keys> should have the same number of components.')
+            raise ValueError(
+                "Vectors of <query> and <negative_keys> should have the same number of components."
+            )
 
     # Normalize to unit vectors if requested
     if normalize:
-        query, positive_key, negative_keys = _normalize(query, positive_key, negative_keys)
-    
+        query, positive_key, negative_keys = _normalize(
+            query, positive_key, negative_keys
+        )
+
     if negative_keys is not None:
         # Explicit negative keys provided
-        
+
         # Cosine similarity between positive pairs
         positive_logit = torch.sum(query * positive_key, dim=1, keepdim=True)
 
-        if negative_mode == 'unpaired':
+        if negative_mode == "unpaired":
             # Cosine similarity between all query-negative combinations
             negative_logits = query @ _transpose(negative_keys)
 
-        elif negative_mode == 'paired':
+        elif negative_mode == "paired":
             # Each query paired with its corresponding negative keys
             query_expanded = query.unsqueeze(1)  # (N, 1, D)
-            negative_logits = query_expanded @ _transpose(negative_keys)  # (N, 1, D) @ (N, D, M) -> (N, 1, M)
+            negative_logits = query_expanded @ _transpose(
+                negative_keys
+            )  # (N, 1, D) @ (N, D, M) -> (N, 1, M)
             negative_logits = negative_logits.squeeze(1)  # (N, M)
 
         # Concatenate positive and negative logits
@@ -172,7 +196,7 @@ def info_nce(query: torch.Tensor,
         labels = torch.zeros(len(logits), dtype=torch.long, device=query.device)
     else:
         # Negative keys are implicitly other positive keys in the batch
-        
+
         # Cosine similarity between all query-positive_key combinations
         logits = query @ _transpose(positive_key)
 

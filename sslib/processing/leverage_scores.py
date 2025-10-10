@@ -12,7 +12,13 @@ class LeverageScoresProcessor(BaseProcessor):
     If rank is None, chooses the smallest k giving the desired energy threshold.
     """
 
-    def __init__(self, rank: Optional[int] = None, energy: float = 0.9, center: bool = True, **kwargs):
+    def __init__(
+        self,
+        rank: Optional[int] = None,
+        energy: float = 0.9,
+        center: bool = True,
+        **kwargs,
+    ):
         """
         Args:
             rank: target rank k (1..min(n,d)). If None, choose via 'energy'.
@@ -29,13 +35,15 @@ class LeverageScoresProcessor(BaseProcessor):
         self.energy = float(energy)
         self.center = bool(center)
 
-        self._metadata.update({
-            "processor_type": "leverage_scores",
-            "rank": self.rank,
-            "energy": self.energy,
-            "center": self.center,
-            "output_type": "row_scores"
-        })
+        self._metadata.update(
+            {
+                "processor_type": "leverage_scores",
+                "rank": self.rank,
+                "energy": self.energy,
+                "center": self.center,
+                "output_type": "row_scores",
+            }
+        )
 
     def process(self, embeddings: np.ndarray) -> np.ndarray:
         if embeddings.ndim != 2:
@@ -55,7 +63,7 @@ class LeverageScoresProcessor(BaseProcessor):
         else:
             if self.rank is None:
                 # Choose k for desired energy in s^2
-                energy_spectrum = s ** 2
+                energy_spectrum = s**2
                 cum = np.cumsum(energy_spectrum)
                 total = cum[-1] if cum.size > 0 else 0.0
                 if total <= 0:
@@ -66,17 +74,23 @@ class LeverageScoresProcessor(BaseProcessor):
             else:
                 chosen_k = max(1, min(self.rank, U.shape[1]))
 
-            Uk = U[:, :chosen_k] if chosen_k > 0 else np.zeros((X.shape[0], 0), dtype=np.float64)
+            Uk = (
+                U[:, :chosen_k]
+                if chosen_k > 0
+                else np.zeros((X.shape[0], 0), dtype=np.float64)
+            )
             scores = np.sum(Uk * Uk, axis=1)  # diag(Uk Uk^T)
 
-        self._metadata.update({
-            "input_shape": embeddings.shape,
-            "n_vectors": int(embeddings.shape[0]),
-            "n_features": int(embeddings.shape[1]),
-            "chosen_rank": int(self._metadata.get("rank") or chosen_k),
-            "scores_sum": float(scores.sum()),
-            "scores_min": float(scores.min() if scores.size else 0.0),
-            "scores_max": float(scores.max() if scores.size else 0.0)
-        })
+        self._metadata.update(
+            {
+                "input_shape": embeddings.shape,
+                "n_vectors": int(embeddings.shape[0]),
+                "n_features": int(embeddings.shape[1]),
+                "chosen_rank": int(self._metadata.get("rank") or chosen_k),
+                "scores_sum": float(scores.sum()),
+                "scores_min": float(scores.min() if scores.size else 0.0),
+                "scores_max": float(scores.max() if scores.size else 0.0),
+            }
+        )
 
         return scores

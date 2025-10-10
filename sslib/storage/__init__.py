@@ -1,3 +1,3 @@
-from .tensor_storage import TensorStorage 
+from .tensor_storage import TensorStorage
 
-__all__ = ['TensorStorage']
+__all__ = ["TensorStorage"]

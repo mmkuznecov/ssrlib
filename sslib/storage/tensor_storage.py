@@ -54,9 +54,7 @@ class TensorStorage:
         # Set chunk size with priority: provided > metadata > default
         default_chunk_size = 3 * 2**20 * np.dtype(np.float32).itemsize
         self.chunk_size = (
-            chunk_size 
-            or self.metadata.get("chunk_size") 
-            or default_chunk_size
+            chunk_size or self.metadata.get("chunk_size") or default_chunk_size
         )
 
         self.loaded_chunks = {}
@@ -251,10 +249,10 @@ class TensorStorage:
         # Check if the parameter exists in the metadata DataFrame
         if self.metadata_df is None or self.metadata_df.empty:
             return None
-        
+
         if param_name not in self.metadata_df.columns:
             return None  # Parameter doesn't exist
-        
+
         matches = self.metadata_df[self.metadata_df[param_name] == param_value]
         if len(matches) == 0:
             return None
@@ -274,7 +272,7 @@ class TensorStorage:
         """
         if self.metadata_df is None or self.metadata_df.empty:
             return {}
-        
+
         matches = self.metadata_df[self.metadata_df["tensor_idx"] == tensor_idx]
         if len(matches) == 0:
             return {}
@@ -293,10 +291,10 @@ class TensorStorage:
         """
         if self.metadata_df is None or self.metadata_df.empty:
             return []
-        
+
         if "batch_id" not in self.metadata_df.columns:
             return []
-        
+
         matches = self.metadata_df[self.metadata_df["batch_id"] == batch_id]
         return [self[idx] for idx in matches["tensor_idx"]]
 
@@ -312,7 +310,7 @@ class TensorStorage:
         """
         if self.metadata_df is None or self.metadata_df.empty:
             return []
-        
+
         filtered_df = self.metadata_df
         for key, value in kwargs.items():
             if key not in filtered_df.columns:
@@ -346,7 +344,7 @@ class TensorStorage:
         os.makedirs(os.path.join(storage_dir, "metadata"), exist_ok=True)
 
         storage = TensorStorage(storage_dir, description, chunk_size)
-        
+
         # Ensure chunk_size is set to actual value, not None
         if chunk_size is None:
             chunk_size = storage.chunk_size
