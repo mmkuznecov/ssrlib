@@ -4,13 +4,13 @@ import torch
 from PIL import Image
 from torchvision import transforms
 from typing import Iterator, Dict, Any, Optional, Tuple, List, Union, ClassVar
-import requests
 from pathlib import Path
 
 from .base import BaseDataset
+from .kaggle_mixin import KaggleDatasetMixin
 
 
-class CelebADataset(BaseDataset):
+class CelebADataset(KaggleDatasetMixin, BaseDataset):
     """CelebA Dataset for SSLib framework."""
 
     # Class-level metadata
@@ -88,6 +88,41 @@ class CelebADataset(BaseDataset):
         self._load_data()
         self._downloaded = True
 
+    def _get_kaggle_dataset_id(self) -> str:
+        """Get Kaggle dataset ID for CelebA."""
+        return "jessicali9530/celeba-dataset"
+
+    def _get_manual_download_instructions(self) -> list[str]:
+        """Get manual download instructions for CelebA."""
+        return [
+            f"1. Go to https://www.kaggle.com/datasets/{self._get_kaggle_dataset_id()}",
+            f"2. Download the dataset manually to {self.root}",
+            "3. Extract and organize with the following structure:",
+            "   - list_eval_partition.csv",
+            "   - list_attr_celeba.csv",
+            "   - img_align_celeba/img_align_celeba/ (directory with images)",
+        ]
+
+    def _organize_extracted_files(self) -> None:
+        """Organize CelebA files after extraction."""
+        # Flatten if there's a single subdirectory
+        self._flatten_single_subdirectory()
+
+        # Find and move image directory
+        if not self.images_dir.exists():
+            found = self._find_and_move_directory("img_align_celeba")
+            if not found:
+                raise FileNotFoundError(
+                    "Could not find img_align_celeba directory after extraction"
+                )
+
+        # Find and move CSV files
+        csv_files = ["list_eval_partition.csv", "list_attr_celeba.csv"]
+        for csv_name in csv_files:
+            found = self._find_and_move_file(csv_name)
+            if not found:
+                raise FileNotFoundError(f"Could not find {csv_name} after extraction")
+
     def _check_dataset(self) -> bool:
         """Check if dataset is already downloaded and properly structured."""
         required_files = [self.split_csv, self.attr_csv]
@@ -116,110 +151,7 @@ class CelebADataset(BaseDataset):
 
     def _download(self) -> None:
         """Download CelebA dataset from Kaggle."""
-        import zipfile
-        import shutil
-
-        # Create directories
-        self.root.mkdir(parents=True, exist_ok=True)
-
-        kaggle_url = "https://www.kaggle.com/api/v1/datasets/download/jessicali9530/celeba-dataset"
-        zip_path = self.root / "celeba_dataset.zip"
-
-        try:
-            print("Downloading CelebA dataset from Kaggle...")
-
-            # Download with requests and show progress
-            response = requests.get(kaggle_url, stream=True)
-            response.raise_for_status()
-
-            total_size = int(response.headers.get("content-length", 0))
-
-            with open(zip_path, "wb") as f:
-                if total_size > 0:
-                    downloaded = 0
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-                            progress = (downloaded / total_size) * 100
-                            print(f"\rProgress: {progress:.1f}%", end="", flush=True)
-                else:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-
-            print(f"\nDownload completed: {zip_path}")
-
-            # Extract the zip file
-            print("Extracting dataset...")
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(self.root)
-
-            print("Extraction completed")
-
-            # Clean up zip file
-            zip_path.unlink()
-            print("Cleaned up zip file")
-
-            # Verify expected structure exists and reorganize if needed
-            if not self.images_dir.exists():
-                # Sometimes the structure might be nested, try to find the images
-                for item in self.root.rglob("img_align_celeba"):
-                    if item.is_dir():
-                        print(
-                            f"Found images directory at {item}, moving to expected location..."
-                        )
-                        shutil.move(str(item), str(self.images_dir))
-                        break
-                else:
-                    raise FileNotFoundError(
-                        "Could not find img_align_celeba directory after extraction"
-                    )
-
-            # Look for CSV files and move them to root if needed
-            for csv_name in ["list_eval_partition.csv", "list_attr_celeba.csv"]:
-                expected_path = self.root / csv_name
-                if not expected_path.exists():
-                    # Search for the file
-                    for found_file in self.root.rglob(csv_name):
-                        print(
-                            f"Found {csv_name} at {found_file}, moving to {expected_path}"
-                        )
-                        shutil.move(str(found_file), str(expected_path))
-                        break
-                    else:
-                        raise FileNotFoundError(
-                            f"Could not find {csv_name} after extraction"
-                        )
-
-            print("Dataset structure organized successfully")
-
-        except requests.exceptions.RequestException as e:
-            print(f"\nError downloading dataset: {e}")
-            print("Please check your internet connection and Kaggle API credentials.")
-            print("Manual download instructions:")
-            print(
-                f"1. Go to https://www.kaggle.com/datasets/jessicali9530/celeba-dataset"
-            )
-            print(f"2. Download the dataset manually to {self.root}")
-            print("3. Extract and organize with the following structure:")
-            print("   - list_eval_partition.csv")
-            print("   - list_attr_celeba.csv")
-            print("   - img_align_celeba/ (directory with images)")
-            raise
-
-        except zipfile.BadZipFile as e:
-            print(f"\nError extracting zip file: {e}")
-            if zip_path.exists():
-                zip_path.unlink()
-            raise
-
-        except Exception as e:
-            print(f"\nUnexpected error during download: {e}")
-            # Clean up partial download
-            if zip_path.exists():
-                zip_path.unlink()
-            raise
+        self._download_from_kaggle(zip_filename="celeba_dataset.zip")
 
     def _load_data(self):
         """Load dataset metadata."""

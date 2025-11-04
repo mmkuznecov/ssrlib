@@ -6,12 +6,13 @@ from typing import Iterator, Dict, Any, Optional, List, Tuple, Union, ClassVar
 import torch
 from PIL import Image
 from torchvision import transforms
-import requests
+import shutil
 
 from .base import BaseDataset
+from .kaggle_mixin import KaggleDatasetMixin
 
 
-class ImageNet100Dataset(BaseDataset):
+class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
     """ImageNet100 Dataset for SSLib framework."""
 
     # Class-level metadata
@@ -84,6 +85,65 @@ class ImageNet100Dataset(BaseDataset):
         self._load_data()
         self._downloaded = True
 
+    def _get_kaggle_dataset_id(self) -> str:
+        """Get Kaggle dataset ID for ImageNet100."""
+        return "ambityga/imagenet100"
+
+    def _get_manual_download_instructions(self) -> list[str]:
+        """Get manual download instructions for ImageNet100."""
+        return [
+            f"1. Go to https://www.kaggle.com/datasets/{self._get_kaggle_dataset_id()}",
+            f"2. Download the dataset manually to {self.root}",
+            "3. Extract and organize with the following structure:",
+            "   - train.X1/, train.X2/, ... (training directories)",
+            "   - val.X/ (validation directory)",
+            "   - Labels.json (optional, for human-readable class names)",
+        ]
+
+    def _organize_extracted_files(self) -> None:
+        """Organize ImageNet100 files after extraction."""
+        # Flatten if there's a single subdirectory
+        self._flatten_single_subdirectory()
+
+        # Verify and rename training directories
+        train_dirs = glob.glob(str(self.root / "train.X*"))
+        if not train_dirs:
+            # Look for alternative naming patterns
+            alt_train_dirs = []
+            for pattern in ["train*", "Train*", "TRAIN*"]:
+                alt_train_dirs.extend(glob.glob(str(self.root / pattern)))
+
+            if alt_train_dirs:
+                print("Found alternative training directories, renaming...")
+                for i, alt_dir in enumerate(alt_train_dirs):
+                    new_name = f"train.X{i+1}"
+                    target = self.root / new_name
+                    print(f"Renaming {Path(alt_dir).name} to {new_name}")
+                    shutil.move(alt_dir, str(target))
+
+        # Verify and rename validation directory
+        val_dirs = glob.glob(str(self.root / "val.X*"))
+        if not val_dirs:
+            # Look for alternative naming patterns
+            alt_val_dirs = []
+            for pattern in ["val*", "Val*", "VAL*", "validation*", "valid*"]:
+                alt_val_dirs.extend(glob.glob(str(self.root / pattern)))
+
+            if alt_val_dirs:
+                print("Found alternative validation directory, renaming...")
+                alt_dir = alt_val_dirs[0]
+                target = self.root / "val.X"
+                print(f"Renaming {Path(alt_dir).name} to val.X")
+                shutil.move(alt_dir, str(target))
+
+        # Auto-detect labels file if not specified
+        if self.labels_path is None:
+            for labels_file in ["Labels.json", "labels.json", "LABELS.json"]:
+                labels_path = self.root / labels_file
+                if labels_path.exists():
+                    self.labels_path = str(labels_path)
+                    break
+
     def _check_dataset(self) -> bool:
         """Check if dataset is already downloaded and properly structured."""
         if not self.root.exists():
@@ -140,159 +200,7 @@ class ImageNet100Dataset(BaseDataset):
 
     def _download(self) -> None:
         """Download ImageNet100 dataset from Kaggle."""
-        import zipfile
-        import shutil
-
-        # Create directories
-        self.root.mkdir(parents=True, exist_ok=True)
-
-        kaggle_url = (
-            "https://www.kaggle.com/api/v1/datasets/download/ambityga/imagenet100"
-        )
-        zip_path = self.root / "imagenet100.zip"
-
-        try:
-            print("Downloading ImageNet100 dataset from Kaggle...")
-            print("Note: This requires Kaggle API authentication.")
-            print(
-                "Please ensure you have ~/.kaggle/kaggle.json with your API credentials."
-            )
-
-            # Download with requests and show progress
-            response = requests.get(kaggle_url, stream=True)
-            response.raise_for_status()
-
-            total_size = int(response.headers.get("content-length", 0))
-
-            with open(zip_path, "wb") as f:
-                if total_size > 0:
-                    downloaded = 0
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-                            progress = (downloaded / total_size) * 100
-                            print(f"\rProgress: {progress:.1f}%", end="", flush=True)
-                else:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-
-            print(f"\nDownload completed: {zip_path}")
-
-            # Extract the zip file
-            print("Extracting dataset...")
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(self.root)
-
-            print("Extraction completed")
-
-            # Clean up zip file
-            zip_path.unlink()
-            print("Cleaned up zip file")
-
-            # Organize file structure if needed
-            self._organize_extracted_files()
-
-            print("Dataset structure organized successfully")
-
-        except requests.exceptions.RequestException as e:
-            print(f"\nError downloading dataset: {e}")
-            print("Please check your internet connection and Kaggle API credentials.")
-            print("Manual download instructions:")
-            print(f"1. Go to https://www.kaggle.com/datasets/ambityga/imagenet100")
-            print(f"2. Download the dataset manually to {self.root}")
-            print("3. Extract and organize with the following structure:")
-            print("   - train.X1/, train.X2/, ... (training directories)")
-            print("   - val.X/ (validation directory)")
-            print("   - Labels.json (optional, for human-readable class names)")
-            raise
-
-        except zipfile.BadZipFile as e:
-            print(f"\nError extracting zip file: {e}")
-            if zip_path.exists():
-                zip_path.unlink()
-            raise
-
-        except Exception as e:
-            print(f"\nUnexpected error during download: {e}")
-            # Clean up partial download
-            if zip_path.exists():
-                zip_path.unlink()
-            raise
-
-    def _organize_extracted_files(self):
-        """Organize extracted files into expected structure."""
-        import shutil
-
-        # Check if files were extracted to a subdirectory
-        subdirs = [
-            d for d in self.root.iterdir() if d.is_dir() and d.name != "__MACOSX"
-        ]
-
-        # If there's only one subdirectory and it contains the dataset, move contents up
-        if len(subdirs) == 1:
-            subdir = subdirs[0]
-            subdir_contents = list(subdir.iterdir())
-            train_dirs_in_subdir = [
-                d
-                for d in subdir_contents
-                if d.is_dir() and d.name.startswith("train.X")
-            ]
-            val_dirs_in_subdir = [
-                d for d in subdir_contents if d.is_dir() and d.name.startswith("val.X")
-            ]
-
-            if train_dirs_in_subdir or val_dirs_in_subdir:
-                print(f"Moving contents from {subdir.name} to root directory...")
-                for item in subdir_contents:
-                    target = self.root / item.name
-                    if target.exists():
-                        if target.is_dir():
-                            shutil.rmtree(target)
-                        else:
-                            target.unlink()
-                    shutil.move(str(item), str(target))
-                subdir.rmdir()
-
-        # Verify expected directories exist
-        train_dirs = glob.glob(str(self.root / "train.X*"))
-        val_dirs = glob.glob(str(self.root / "val.X*"))
-
-        if not train_dirs:
-            alt_train_dirs = []
-            for pattern in ["train*", "Train*", "TRAIN*"]:
-                alt_train_dirs.extend(glob.glob(str(self.root / pattern)))
-
-            if alt_train_dirs:
-                print("Found alternative training directories, renaming...")
-                for i, alt_dir in enumerate(alt_train_dirs):
-                    new_name = f"train.X{i+1}"
-                    target = self.root / new_name
-                    print(f"Renaming {Path(alt_dir).name} to {new_name}")
-                    shutil.move(alt_dir, str(target))
-
-        if not val_dirs:
-            alt_val_dirs = []
-            for pattern in ["val*", "Val*", "VAL*", "validation*", "valid*"]:
-                alt_val_dirs.extend(glob.glob(str(self.root / pattern)))
-
-            if alt_val_dirs:
-                print("Found alternative validation directory, renaming...")
-                alt_dir = alt_val_dirs[0]
-                target = self.root / "val.X"
-                print(f"Renaming {Path(alt_dir).name} to val.X")
-                shutil.move(alt_dir, str(target))
-
-        # Auto-detect labels file if not specified
-        if self.labels_path is None:
-            for labels_file in ["Labels.json", "labels.json", "LABELS.json"]:
-                labels_path = self.root / labels_file
-                if labels_path.exists():
-                    self.labels_path = str(labels_path)
-                    break
-
-        print("File organization completed")
+        self._download_from_kaggle(zip_filename="imagenet100.zip")
 
     def _load_data(self):
         """Load dataset structure and samples."""
