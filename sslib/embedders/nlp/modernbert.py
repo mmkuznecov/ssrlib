@@ -1,14 +1,11 @@
 """ModernBERT embedder implementation."""
 
-import torch
-import torch.nn as nn
-from transformers import AutoModel, AutoTokenizer
 from typing import Dict, Any, ClassVar
 
-from ..base import BaseEmbedder
+from .bert_base import TransformerEmbedderBase
 
 
-class ModernBERTEmbedder(BaseEmbedder):
+class ModernBERTEmbedder(TransformerEmbedderBase):
     """ModernBERT embedder for natural language processing."""
 
     # Class-level metadata
@@ -22,6 +19,9 @@ class ModernBERTEmbedder(BaseEmbedder):
         "max_sequence_length": 8192,
         "pooling_strategy": "cls",
     }
+
+    MODEL_FAMILY_NAME: ClassVar[str] = "ModernBERT"
+    DEFAULT_MODEL: ClassVar[str] = "modernbert-base"
 
     AVAILABLE_MODELS = {
         "modernbert-base": {
@@ -51,145 +51,23 @@ class ModernBERTEmbedder(BaseEmbedder):
             device: Device to run on ('cpu' or 'cuda')
             **kwargs: Additional arguments
         """
-        super().__init__(f"ModernBERT_{model_name}", device, **kwargs)
+        super().__init__(model_name, pooling, device, **kwargs)
 
-        if model_name not in self.AVAILABLE_MODELS:
-            raise ValueError(
-                f"Unknown model {model_name}. "
-                f"Available: {list(self.AVAILABLE_MODELS.keys())}"
-            )
+    def _get_model_metadata(self) -> Dict[str, Any]:
+        """Get ModernBERT-specific metadata."""
+        return {
+            "model_name": self.model_name,
+            "hf_name": self.hf_name,
+            "embedding_dim": self.embedding_dim,
+            "pooling": self.pooling,
+            "model_family": "ModernBERT",
+            "num_layers": self.AVAILABLE_MODELS[self.model_name]["num_layers"],
+        }
 
-        if pooling not in ["cls", "mean"]:
-            raise ValueError(f"Pooling must be 'cls' or 'mean', got {pooling}")
+    def _get_default_max_length(self) -> int:
+        """ModernBERT default max length is 512 (same as BERT)."""
+        return 512
 
-        self.model_name = model_name
-        self.hf_name = self.AVAILABLE_MODELS[model_name]["hf_name"]
-        self.embedding_dim = self.AVAILABLE_MODELS[model_name]["embedding_dim"]
-        self.pooling = pooling
-        self.tokenizer = None
-
-        # Update metadata
-        self._metadata.update(
-            {
-                "model_name": model_name,
-                "hf_name": self.hf_name,
-                "embedding_dim": self.embedding_dim,
-                "pooling": pooling,
-                "model_family": "ModernBERT",
-                "num_layers": self.AVAILABLE_MODELS[model_name]["num_layers"],
-            }
-        )
-
-    def get_embedding_dim(self) -> int:
-        """Get embedding dimension."""
-        return self.embedding_dim
-
-    def load_model(self) -> None:
-        """Load ModernBERT model from Hugging Face."""
-        if self._loaded:
-            return
-
-        print(f"Loading ModernBERT model: {self.hf_name}")
-        try:
-            self.model = AutoModel.from_pretrained(self.hf_name)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.hf_name)
-            self.model = self.model.to(self.device)
-            self.model.eval()
-            self._loaded = True
-            print(f"Successfully loaded {self.model_name}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to load {self.model_name}: {str(e)}")
-
-    def _mean_pooling(
-        self, token_embeddings: torch.Tensor, attention_mask: torch.Tensor
-    ) -> torch.Tensor:
-        """Perform mean pooling on token embeddings.
-
-        Args:
-            token_embeddings: Token embeddings from model
-            attention_mask: Attention mask
-
-        Returns:
-            Pooled embeddings
-        """
-        input_mask_expanded = (
-            attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        )
-        sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
-        sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-        return sum_embeddings / sum_mask
-
-    def forward(self, batch: torch.Tensor) -> torch.Tensor:
-        """Forward pass through ModernBERT model.
-
-        Note: This expects pre-tokenized input_ids as tensors.
-        For text input, use embed_texts() method instead.
-
-        Args:
-            batch: Input batch of token IDs of shape (batch_size, seq_len)
-
-        Returns:
-            Embeddings of shape (batch_size, embedding_dim)
-        """
-        if not self._loaded:
-            self.load_model()
-
-        self.model.eval()
-        with torch.no_grad():
-            # Create attention mask (assuming padding token is 0)
-            attention_mask = (batch != 0).long()
-
-            outputs = self.model(input_ids=batch, attention_mask=attention_mask)
-
-            if self.pooling == "cls":
-                # Use [CLS] token embedding (first token)
-                embeddings = outputs.last_hidden_state[:, 0, :]
-            elif self.pooling == "mean":
-                # Use mean pooling over all tokens
-                embeddings = self._mean_pooling(
-                    outputs.last_hidden_state, attention_mask
-                )
-            else:
-                raise ValueError(f"Unknown pooling strategy: {self.pooling}")
-
-        return embeddings
-
-    def embed_texts(self, texts: list, max_length: int = 512) -> torch.Tensor:
-        """Embed a list of texts.
-
-        Args:
-            texts: List of text strings
-            max_length: Maximum sequence length (up to 8192 supported)
-
-        Returns:
-            Embeddings tensor of shape (len(texts), embedding_dim)
-        """
-        if not self._loaded:
-            self.load_model()
-
-        # Tokenize texts
-        encoded = self.tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            max_length=min(max_length, 8192),  # ModernBERT supports up to 8192
-            return_tensors="pt",
-        )
-
-        input_ids = encoded["input_ids"].to(self.device)
-        attention_mask = encoded["attention_mask"].to(self.device)
-
-        self.model.eval()
-        with torch.no_grad():
-            outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-
-            if self.pooling == "cls":
-                embeddings = outputs.last_hidden_state[:, 0, :]
-            elif self.pooling == "mean":
-                embeddings = self._mean_pooling(
-                    outputs.last_hidden_state, attention_mask
-                )
-            else:
-                raise ValueError(f"Unknown pooling strategy: {self.pooling}")
-
-        return embeddings
+    def _clamp_max_length(self, max_length: int) -> int:
+        """ModernBERT supports up to 8192 tokens."""
+        return min(max_length, 8192)
