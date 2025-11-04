@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 import json
 
-from .base import BaseDataset, BaseEmbedder, BaseProcessor
+from ..datasets.base import BaseDataset
+from ..embedders.base import BaseEmbedder
+from ..processing.base import BaseProcessor
 from .config import Config
 from ..storage.tensor_storage import TensorStorage
 
