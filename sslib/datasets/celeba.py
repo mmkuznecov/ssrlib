@@ -68,7 +68,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         # Define expected file paths
         self.split_csv = self.root / "list_eval_partition.csv"
         self.attr_csv = self.root / "list_attr_celeba.csv"
-        self.images_dir = self.root / "img_align_celeba/img_align_celeba"
+        self.images_dir = self.root / "img_align_celeba" / "img_align_celeba"
 
         # Will be loaded after download/check
         self.data = None
@@ -104,24 +104,64 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         ]
 
     def _organize_extracted_files(self) -> None:
-        """Organize CelebA files after extraction."""
-        # Flatten if there's a single subdirectory
-        self._flatten_single_subdirectory()
+        """Organize CelebA files after extraction.
 
-        # Find and move image directory
-        if not self.images_dir.exists():
-            found = self._find_and_move_directory("img_align_celeba")
-            if not found:
-                raise FileNotFoundError(
-                    "Could not find img_align_celeba directory after extraction"
-                )
+        The Kaggle download typically extracts to the correct structure already.
+        We just verify and search for missing files if needed.
+        """
+        # Check if files are already in the right place
+        files_ok = (
+            self.split_csv.exists()
+            and self.attr_csv.exists()
+            and self.images_dir.exists()
+        )
 
-        # Find and move CSV files
+        if files_ok:
+            print("Dataset structure is already correct")
+            return
+
+        # If not, try to find and organize files
+        print("Organizing dataset structure...")
+
+        # Find and move CSV files if needed
         csv_files = ["list_eval_partition.csv", "list_attr_celeba.csv"]
         for csv_name in csv_files:
-            found = self._find_and_move_file(csv_name)
-            if not found:
-                raise FileNotFoundError(f"Could not find {csv_name} after extraction")
+            if not (self.root / csv_name).exists():
+                found = self._find_and_move_file(csv_name)
+                if not found:
+                    raise FileNotFoundError(
+                        f"Could not find {csv_name} after extraction"
+                    )
+
+        # Find image directory if needed
+        if not self.images_dir.exists():
+            # First check if img_align_celeba directory exists at root level
+            parent_img_dir = self.root / "img_align_celeba"
+            if parent_img_dir.exists():
+                # Check if images are directly in this directory or in a subdirectory
+                image_files = list(parent_img_dir.glob("*.jpg"))
+                if image_files:
+                    # Images are directly in img_align_celeba, need to create subdirectory
+                    print(
+                        "Images found directly in img_align_celeba, creating proper structure..."
+                    )
+                    self.images_dir.mkdir(parents=True, exist_ok=True)
+                    for img_file in image_files:
+                        img_file.rename(self.images_dir / img_file.name)
+                elif (parent_img_dir / "img_align_celeba").exists():
+                    # Already in correct structure
+                    print("Image directory structure is correct")
+                else:
+                    raise FileNotFoundError(
+                        "img_align_celeba directory exists but contains no images"
+                    )
+            else:
+                # Try to find img_align_celeba anywhere in the root
+                found = self._find_and_move_directory("img_align_celeba")
+                if not found:
+                    raise FileNotFoundError(
+                        "Could not find img_align_celeba directory after extraction"
+                    )
 
     def _check_dataset(self) -> bool:
         """Check if dataset is already downloaded and properly structured."""

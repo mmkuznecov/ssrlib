@@ -101,14 +101,24 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
         ]
 
     def _organize_extracted_files(self) -> None:
-        """Organize ImageNet100 files after extraction."""
-        # Flatten if there's a single subdirectory
-        self._flatten_single_subdirectory()
+        """Organize ImageNet100 files after extraction.
 
-        # Verify and rename training directories
+        The Kaggle download typically extracts to the correct structure already.
+        We just verify and search for missing directories if needed.
+        """
+        # Verify expected directories exist
         train_dirs = glob.glob(str(self.root / "train.X*"))
+        val_dir = self.root / "val.X"
+
+        # Check if structure is already correct
+        if train_dirs and val_dir.exists():
+            print("Dataset structure is already correct")
+            return
+
+        print("Organizing dataset structure...")
+
+        # Look for training directories with alternative names
         if not train_dirs:
-            # Look for alternative naming patterns
             alt_train_dirs = []
             for pattern in ["train*", "Train*", "TRAIN*"]:
                 alt_train_dirs.extend(glob.glob(str(self.root / pattern)))
@@ -121,10 +131,8 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
                     print(f"Renaming {Path(alt_dir).name} to {new_name}")
                     shutil.move(alt_dir, str(target))
 
-        # Verify and rename validation directory
-        val_dirs = glob.glob(str(self.root / "val.X*"))
-        if not val_dirs:
-            # Look for alternative naming patterns
+        # Look for validation directory with alternative names
+        if not val_dir.exists():
             alt_val_dirs = []
             for pattern in ["val*", "Val*", "VAL*", "validation*", "valid*"]:
                 alt_val_dirs.extend(glob.glob(str(self.root / pattern)))
@@ -142,6 +150,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
                 labels_path = self.root / labels_file
                 if labels_path.exists():
                     self.labels_path = str(labels_path)
+                    print(f"Found labels file: {labels_file}")
                     break
 
     def _check_dataset(self) -> bool:

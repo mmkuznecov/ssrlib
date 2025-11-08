@@ -247,30 +247,3 @@ class KaggleDatasetMixin:
                     return True
 
         return False
-
-    def _flatten_single_subdirectory(self) -> None:
-        """If root contains only one subdirectory, move its contents up to root.
-
-        Useful when Kaggle extraction creates an extra nesting level.
-        """
-        subdirs = [
-            d for d in self.root.iterdir() if d.is_dir() and d.name != "__MACOSX"
-        ]
-
-        if len(subdirs) == 1:
-            subdir = subdirs[0]
-            subdir_contents = list(subdir.iterdir())
-
-            if subdir_contents:
-                print(f"Moving contents from {subdir.name} to root directory...")
-                for item in subdir_contents:
-                    target = self.root / item.name
-                    if target.exists():
-                        if target.is_dir():
-                            shutil.rmtree(target)
-                        else:
-                            target.unlink()
-                    shutil.move(str(item), str(target))
-
-                # Remove empty subdirectory
-                subdir.rmdir()
