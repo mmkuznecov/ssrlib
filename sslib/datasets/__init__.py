@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 from .base import BaseDataset
 from ..core.registry import BaseRegistry, discover_components
 
+# Import HF registry utilities
+from .hf_registry import list_hf_datasets, get_hf_dataset_info
+
 # Type alias for clarity
 DatasetRegistry = BaseRegistry[BaseDataset]
 
@@ -108,6 +111,12 @@ def get_dataset_modalities() -> List[str]:
     return []
 
 
+# HuggingFace dataset utilities
+def get_hf_datasets() -> List[str]:
+    """Get list of available HuggingFace datasets."""
+    return list_hf_datasets()
+
+
 # Create dynamic exports
 _exported_classes = {}
 for name, dataset_class in _dataset_registry._items.items():
@@ -132,6 +141,9 @@ __all__ = [
     "get_datasets_by_category",
     "get_dataset_categories",
     "get_dataset_modalities",
+    "get_hf_datasets",
+    "get_hf_dataset_info",
+    "list_hf_datasets",
     *_dataset_registry.list_all(),
 ]
 
