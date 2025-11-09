@@ -6,10 +6,12 @@ from typing import Iterator, Dict, Any, Optional, List, Tuple, Union, ClassVar
 import torch
 from PIL import Image
 from torchvision import transforms
-import shutil
+import logging
 
 from .base import BaseDataset
 from .kaggle_mixin import KaggleDatasetMixin
+
+logger = logging.getLogger(__name__)
 
 
 class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
@@ -39,13 +41,12 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
         """Initialize ImageNet100 dataset."""
         super().__init__("ImageNet100", **kwargs)
 
-        # Set root path with ImageNet100 subdirectory
         self.root = Path(root) / "ImageNet100"
         self.split = split
         self.combine_train_splits = combine_train_splits
         self.labels_path = labels_path
 
-        # Set default transform if none provided
+        # Set default transform
         if transform is None:
             self.transform = transforms.Compose(
                 [
@@ -60,14 +61,13 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
         else:
             self.transform = transform
 
-        # Will be loaded after download
+        # Will be loaded after verification
         self.samples = []
         self.synset_to_class = {}
         self.class_names = []
         self.class_to_idx = {}
         self.idx_to_class = {}
 
-        # Update metadata
         self._metadata.update(
             {
                 "split": split,
@@ -76,226 +76,246 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
             }
         )
 
-        # Check if dataset exists, download if not
-        if not self._check_dataset():
-            print(f"Downloading ImageNet100 to {self.root}")
+        # Download if needed
+        if not self._check_exists():
+            logger.info(f"ImageNet100 not found, downloading to {self.root}")
+            print(f"ImageNet100 not found, downloading to {self.root}")
             self._download()
 
-        # Load the data
         self._load_data()
         self._downloaded = True
 
     def _get_kaggle_dataset_id(self) -> str:
-        """Get Kaggle dataset ID for ImageNet100."""
+        """Get Kaggle dataset ID."""
         return "ambityga/imagenet100"
 
-    def _get_manual_download_instructions(self) -> list[str]:
-        """Get manual download instructions for ImageNet100."""
-        return [
-            f"1. Go to https://www.kaggle.com/datasets/{self._get_kaggle_dataset_id()}",
-            f"2. Download the dataset manually to {self.root}",
-            "3. Extract and organize with the following structure:",
-            "   - train.X1/, train.X2/, ... (training directories)",
-            "   - val.X/ (validation directory)",
-            "   - Labels.json (optional, for human-readable class names)",
-        ]
-
-    def _organize_extracted_files(self) -> None:
-        """Organize ImageNet100 files after extraction.
-
-        The Kaggle download typically extracts to the correct structure already.
-        We just verify and search for missing directories if needed.
-        """
-        # Verify expected directories exist
-        train_dirs = glob.glob(str(self.root / "train.X*"))
-        val_dir = self.root / "val.X"
-
-        # Check if structure is already correct
-        if train_dirs and val_dir.exists():
-            print("Dataset structure is already correct")
-            return
-
-        print("Organizing dataset structure...")
-
-        # Look for training directories with alternative names
-        if not train_dirs:
-            alt_train_dirs = []
-            for pattern in ["train*", "Train*", "TRAIN*"]:
-                alt_train_dirs.extend(glob.glob(str(self.root / pattern)))
-
-            if alt_train_dirs:
-                print("Found alternative training directories, renaming...")
-                for i, alt_dir in enumerate(alt_train_dirs):
-                    new_name = f"train.X{i+1}"
-                    target = self.root / new_name
-                    print(f"Renaming {Path(alt_dir).name} to {new_name}")
-                    shutil.move(alt_dir, str(target))
-
-        # Look for validation directory with alternative names
-        if not val_dir.exists():
-            alt_val_dirs = []
-            for pattern in ["val*", "Val*", "VAL*", "validation*", "valid*"]:
-                alt_val_dirs.extend(glob.glob(str(self.root / pattern)))
-
-            if alt_val_dirs:
-                print("Found alternative validation directory, renaming...")
-                alt_dir = alt_val_dirs[0]
-                target = self.root / "val.X"
-                print(f"Renaming {Path(alt_dir).name} to val.X")
-                shutil.move(alt_dir, str(target))
-
-        # Auto-detect labels file if not specified
-        if self.labels_path is None:
-            for labels_file in ["Labels.json", "labels.json", "LABELS.json"]:
-                labels_path = self.root / labels_file
-                if labels_path.exists():
-                    self.labels_path = str(labels_path)
-                    print(f"Found labels file: {labels_file}")
-                    break
-
-    def _check_dataset(self) -> bool:
-        """Check if dataset is already downloaded and properly structured."""
+    def _check_exists(self) -> bool:
+        """Check if dataset exists and is properly structured."""
         if not self.root.exists():
             return False
 
-        # Check for training directories
-        train_dirs = glob.glob(str(self.root / "train.X*"))
-        has_train = len(train_dirs) > 0
+        return self._verify_structure()
 
-        # Check for validation directory
-        val_dir = self.root / "val.X"
-        has_val = val_dir.exists()
+    def _verify_structure(self) -> bool:
+        """
+        Verify ImageNet100 structure is correct.
 
-        # Check if directories have content
-        has_content = False
-        if has_train or has_val:
-            for pattern in ["train.X*", "val.X"]:
-                for dir_path in glob.glob(str(self.root / pattern)):
-                    dir_path = Path(dir_path)
-                    if dir_path.is_dir():
-                        for subdir in dir_path.iterdir():
-                            if subdir.is_dir():
-                                image_files = [
-                                    f
-                                    for f in subdir.iterdir()
-                                    if f.suffix.lower()
-                                    in [".jpg", ".jpeg", ".png", ".bmp"]
-                                ]
-                                if image_files:
-                                    has_content = True
-                                    break
-                        if has_content:
-                            break
-                    if has_content:
-                        break
+        Expected structure:
+        ImageNet100/
+        ├── train.X1/
+        │   ├── n01440764/
+        │   ├── n01443537/
+        │   └── ...
+        ├── train.X2/ (optional)
+        ├── val.X/
+        │   ├── n01440764/
+        │   ├── n01443537/
+        │   └── ...
+        └── Labels.json (optional)
+        """
+        logger.info("Verifying ImageNet100 structure...")
 
-        if has_train and has_val and has_content:
-            print(f"ImageNet100 dataset found at {self.root}")
-            return True
-        else:
+        # Find training directories
+        train_dirs = self._find_train_directories()
+        if not train_dirs:
+            logger.error("No training directories found")
             return False
 
+        # Find validation directory
+        val_dir = self._find_val_directory()
+        if not val_dir:
+            logger.error("No validation directory found")
+            return False
+
+        # Check for images
+        has_images = self._check_has_images(train_dirs + [val_dir])
+        if not has_images:
+            logger.error("No images found in directories")
+            return False
+
+        # Find labels file (optional)
+        if self.labels_path is None:
+            self.labels_path = self._find_labels_file()
+
+        logger.info(f"✓ Structure verified")
+        print(f"✓ ImageNet100 structure verified")
+        print(f"  - Training dirs: {len(train_dirs)}")
+        print(f"  - Validation dir: {val_dir.name}")
+        print(f"  - Labels file: {'Found' if self.labels_path else 'Not found'}")
+
+        return True
+
+    def _find_train_directories(self) -> List[Path]:
+        """Find training directories (train.X1, train.X2, etc.)."""
+        train_dirs = []
+
+        # Look for train.X* pattern
+        for pattern in ["train.X*", "train*", "Train*"]:
+            found = list(self.root.glob(pattern))
+            for path in found:
+                if path.is_dir() and self._has_synset_subdirs(path):
+                    train_dirs.append(path)
+
+        # Sort by name
+        train_dirs.sort(key=lambda x: x.name)
+
+        if train_dirs:
+            logger.info(f"Found {len(train_dirs)} training directories")
+
+        return train_dirs
+
+    def _find_val_directory(self) -> Optional[Path]:
+        """Find validation directory (val.X or similar)."""
+        # Try exact name first
+        val_dir = self.root / "val.X"
+        if val_dir.exists() and self._has_synset_subdirs(val_dir):
+            logger.info("Found validation directory: val.X")
+            return val_dir
+
+        # Try various patterns
+        for pattern in ["val*", "Val*", "validation*", "valid*"]:
+            found = list(self.root.glob(pattern))
+            for path in found:
+                if path.is_dir() and self._has_synset_subdirs(path):
+                    logger.info(f"Found validation directory: {path.name}")
+                    return path
+
+        return None
+
+    def _has_synset_subdirs(self, directory: Path) -> bool:
+        """Check if directory contains synset subdirectories (n01...)."""
+        subdirs = [d for d in directory.iterdir() if d.is_dir()]
+        if not subdirs:
+            return False
+
+        # Check if any subdirectory starts with 'n' (synset pattern)
+        return any(d.name.startswith("n") for d in subdirs)
+
+    def _check_has_images(self, directories: List[Path]) -> bool:
+        """Check if directories contain image files."""
+        for directory in directories:
+            for synset_dir in directory.iterdir():
+                if synset_dir.is_dir():
+                    # Check for image files
+                    image_files = (
+                        list(synset_dir.glob("*.JPEG"))
+                        + list(synset_dir.glob("*.jpg"))
+                        + list(synset_dir.glob("*.png"))
+                    )
+                    if image_files:
+                        return True
+        return False
+
+    def _find_labels_file(self) -> Optional[str]:
+        """Find Labels.json file if it exists."""
+        for pattern in ["Labels.json", "labels.json", "LABELS.json"]:
+            labels_path = self.root / pattern
+            if labels_path.exists():
+                logger.info(f"Found labels file: {pattern}")
+                return str(labels_path)
+
+        return None
+
     def download(self) -> None:
-        """Download ImageNet100 dataset if not already present."""
+        """Download ImageNet100 dataset if not present."""
         if self._downloaded:
             return
 
-        if not self._check_dataset():
-            print(f"Downloading ImageNet100 to {self.root}")
+        if not self._check_exists():
             self._download()
             self._load_data()
 
         self._downloaded = True
 
     def _download(self) -> None:
-        """Download ImageNet100 dataset from Kaggle."""
+        """Download dataset from Kaggle."""
         self._download_from_kaggle(zip_filename="imagenet100.zip")
 
-    def _load_data(self):
+    def _load_data(self) -> None:
         """Load dataset structure and samples."""
-        # Load labels mapping if available
+        # Load labels if available
         if self.labels_path and os.path.exists(self.labels_path):
-            with open(self.labels_path, "r") as f:
-                labels = json.load(f)
-            self.synset_to_class = {
-                synset: desc.split(",")[0].strip() for synset, desc in labels.items()
-            }
-            self.class_names = sorted(list(set(self.synset_to_class.values())))
-        elif self.labels_path is None:
-            labels_path = self.root / "Labels.json"
-            if labels_path.exists():
-                self.labels_path = str(labels_path)
-                with open(self.labels_path, "r") as f:
-                    labels = json.load(f)
-                self.synset_to_class = {
-                    synset: desc.split(",")[0].strip()
-                    for synset, desc in labels.items()
-                }
-                self.class_names = sorted(list(set(self.synset_to_class.values())))
+            self._load_labels()
 
         # Load samples based on split
         if self.split in ["train", "training"]:
-            self._load_train_data()
+            self._load_train_samples()
         elif self.split in ["val", "valid", "validation"]:
-            self._load_val_data()
+            self._load_val_samples()
         else:
             raise ValueError(f"Unknown split: {self.split}")
 
-        # Create class mappings after loading samples
+        # Create class mappings
         self._create_class_mappings()
 
-    def _load_train_data(self):
-        """Load training data from train.X* directories."""
-        train_dirs = []
+        logger.info(f"Loaded {len(self.samples)} samples for split '{self.split}'")
 
-        if self.combine_train_splits:
-            train_pattern = str(self.root / "train.X*")
-            train_dirs = glob.glob(train_pattern)
-            train_dirs.sort()
-        else:
-            train_dirs = [str(self.root / "train.X1")]
+    def _load_labels(self) -> None:
+        """Load synset to class name mapping."""
+        with open(self.labels_path, "r") as f:
+            labels = json.load(f)
+
+        self.synset_to_class = {
+            synset: desc.split(",")[0].strip() for synset, desc in labels.items()
+        }
+
+        logger.info(f"Loaded {len(self.synset_to_class)} class labels")
+
+    def _load_train_samples(self) -> None:
+        """Load training samples."""
+        train_dirs = self._find_train_directories()
 
         if not train_dirs:
             raise ValueError(f"No training directories found in {self.root}")
 
-        print(f"Loading training data from: {[Path(d).name for d in train_dirs]}")
-
-        for train_dir in train_dirs:
-            if os.path.exists(train_dir):
-                self._load_from_directory(train_dir)
-
-    def _load_val_data(self):
-        """Load validation data from val.X directory."""
-        val_dir = self.root / "val.X"
-        if not val_dir.exists():
-            raise ValueError(f"Validation directory {val_dir} not found")
-
-        print(f"Loading validation data from: {val_dir.name}")
-        self._load_from_directory(str(val_dir))
-
-    def _load_from_directory(self, directory: str):
-        """Load samples from a directory with synset subdirectories."""
-        dir_path = Path(directory)
-
-        for synset_dir in dir_path.iterdir():
-            if synset_dir.is_dir():
-                synset_id = synset_dir.name
-                class_name = self.synset_to_class.get(synset_id, synset_id)
-
-                for img_path in synset_dir.iterdir():
-                    if img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
-                        self.samples.append((str(img_path), class_name, synset_id))
-
-    def _create_class_mappings(self):
-        """Create class to index mappings."""
-        if self.class_names:
-            self.class_to_idx = {name: idx for idx, name in enumerate(self.class_names)}
+        # Use all or just first directory based on combine_train_splits
+        if self.combine_train_splits:
+            dirs_to_load = train_dirs
         else:
-            unique_classes = sorted(list(set([sample[1] for sample in self.samples])))
-            self.class_names = unique_classes
-            self.class_to_idx = {name: idx for idx, name in enumerate(unique_classes)}
+            dirs_to_load = train_dirs[:1]
 
+        logger.info(f"Loading from {len(dirs_to_load)} training directories")
+
+        for train_dir in dirs_to_load:
+            self._load_samples_from_directory(train_dir)
+
+    def _load_val_samples(self) -> None:
+        """Load validation samples."""
+        val_dir = self._find_val_directory()
+
+        if not val_dir:
+            raise ValueError(f"Validation directory not found in {self.root}")
+
+        logger.info(f"Loading from validation directory: {val_dir.name}")
+        self._load_samples_from_directory(val_dir)
+
+    def _load_samples_from_directory(self, directory: Path) -> None:
+        """Load all samples from a directory with synset structure."""
+        for synset_dir in directory.iterdir():
+            if not synset_dir.is_dir():
+                continue
+
+            synset_id = synset_dir.name
+            class_name = self.synset_to_class.get(synset_id, synset_id)
+
+            # Find all image files
+            image_extensions = ["*.JPEG", "*.jpg", "*.jpeg", "*.png"]
+            for ext in image_extensions:
+                for img_path in synset_dir.glob(ext):
+                    self.samples.append((str(img_path), class_name, synset_id))
+
+    def _create_class_mappings(self) -> None:
+        """Create class to index mappings."""
+        if self.synset_to_class:
+            unique_classes = sorted(set(self.synset_to_class.values()))
+        else:
+            unique_classes = sorted(set(sample[1] for sample in self.samples))
+
+        self.class_names = unique_classes
+        self.class_to_idx = {name: idx for idx, name in enumerate(unique_classes)}
         self.idx_to_class = {idx: name for name, idx in self.class_to_idx.items()}
+
+        logger.info(f"Created mappings for {len(self.class_names)} classes")
 
     def __getitem__(
         self, idx: Union[int, slice]
@@ -339,7 +359,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
         return image, target
 
     def __iter__(self) -> Iterator[torch.Tensor]:
-        """Iterate over dataset returning image tensors only (for pipeline compatibility)."""
+        """Iterate over dataset returning image tensors only."""
         if not self._downloaded:
             self.download()
 
@@ -347,8 +367,8 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
             try:
                 image, _ = self._get_single_item(idx)
                 yield image
-            except (FileNotFoundError, Exception) as e:
-                print(f"Warning: Skipping sample {idx}: {e}")
+            except Exception as e:
+                logger.warning(f"Skipping sample {idx}: {str(e)}")
                 continue
 
     def __len__(self) -> int:
@@ -358,7 +378,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
         return len(self.samples)
 
     def __repr__(self) -> str:
-        """String representation of dataset."""
+        """String representation."""
         return (
             f"ImageNet100Dataset(split='{self.split}', "
             f"size={len(self.samples) if self.samples else 'Unknown'}, "
@@ -419,7 +439,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
             {
                 "num_samples": len(self.samples),
                 "num_classes": len(self.class_names),
-                "class_names": self.class_names[:10],
+                "class_names": self.class_names[:10],  # First 10 for brevity
                 "image_shape": "(3, 224, 224)",
                 "split": self.split,
                 "combine_train_splits": self.combine_train_splits,

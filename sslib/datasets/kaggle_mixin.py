@@ -1,4 +1,4 @@
-"""Mixin for downloading datasets from Kaggle."""
+"""Simplified mixin for downloading datasets from Kaggle."""
 
 import zipfile
 import shutil
@@ -6,41 +6,28 @@ import requests
 from pathlib import Path
 from typing import Optional
 from abc import abstractmethod
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class KaggleDatasetMixin:
-    """Mixin providing Kaggle download functionality for datasets.
+    """
+    Simplified mixin for Kaggle dataset downloads.
 
-    Classes using this mixin should define:
-    - self.root: Path to dataset root directory
-    - _get_kaggle_dataset_id(): Return the Kaggle dataset ID
-    - _get_manual_download_instructions(): Return manual download instructions
-    - _organize_extracted_files(): Organize files after extraction (optional)
+    Subclasses must implement:
+    - _get_kaggle_dataset_id() -> str
+    - _verify_structure() -> bool
     """
 
     @abstractmethod
     def _get_kaggle_dataset_id(self) -> str:
-        """Get the Kaggle dataset identifier (e.g., 'username/dataset-name').
-
-        Returns:
-            Kaggle dataset ID
-        """
+        """Return Kaggle dataset ID (e.g., 'username/dataset-name')."""
         pass
 
     @abstractmethod
-    def _get_manual_download_instructions(self) -> list[str]:
-        """Get manual download instructions for this dataset.
-
-        Returns:
-            List of instruction strings to display to user
-        """
-        pass
-
-    def _organize_extracted_files(self) -> None:
-        """Organize extracted files into expected structure.
-
-        Override this method in subclass if custom organization is needed.
-        """
+    def _verify_structure(self) -> bool:
+        """Verify dataset structure is correct after extraction."""
         pass
 
     def _download_from_kaggle(
@@ -48,48 +35,47 @@ class KaggleDatasetMixin:
         dataset_id: Optional[str] = None,
         zip_filename: Optional[str] = None,
     ) -> None:
-        """Download and extract dataset from Kaggle.
-
-        Args:
-            dataset_id: Kaggle dataset ID (uses _get_kaggle_dataset_id() if None)
-            zip_filename: Name for downloaded zip file (auto-generated if None)
         """
-        # Get dataset ID
-        if dataset_id is None:
-            dataset_id = self._get_kaggle_dataset_id()
+        Download and extract dataset from Kaggle.
 
-        # Create directories
-        self.root.mkdir(parents=True, exist_ok=True)
+        Simplified flow:
+        1. Download zip file
+        2. Extract to root
+        3. Verify structure
+        4. Clean up
+        """
+        dataset_id = dataset_id or self._get_kaggle_dataset_id()
 
-        # Generate zip filename if not provided
+        # Generate zip filename
         if zip_filename is None:
             zip_filename = f"{dataset_id.split('/')[-1]}.zip"
 
-        kaggle_url = f"https://www.kaggle.com/api/v1/datasets/download/{dataset_id}"
+        # Ensure root directory exists
+        self.root.mkdir(parents=True, exist_ok=True)
         zip_path = self.root / zip_filename
 
         try:
+            # Step 1: Download
+            logger.info(f"Downloading {dataset_id} from Kaggle...")
             print(f"Downloading {dataset_id} from Kaggle...")
-            print("Note: This requires Kaggle API authentication.")
-            print(
-                "Please ensure you have ~/.kaggle/kaggle.json with your API credentials."
-            )
+            self._download_file(dataset_id, zip_path)
 
-            # Download with progress bar
-            self._download_with_progress(kaggle_url, zip_path)
-
-            # Extract
+            # Step 2: Extract
+            logger.info("Extracting dataset...")
             print("Extracting dataset...")
             self._extract_zip(zip_path)
-            print("Extraction completed")
 
-            # Clean up zip file
+            # Step 3: Verify
+            if not self._verify_structure():
+                raise RuntimeError("Dataset structure verification failed")
+
+            # Step 4: Clean up
+            logger.info("Cleaning up...")
+            print("Cleaning up...")
             zip_path.unlink()
-            print("Cleaned up zip file")
 
-            # Organize files (subclass-specific)
-            self._organize_extracted_files()
-            print("Dataset structure organized successfully")
+            logger.info("Dataset download completed successfully")
+            print("Dataset download completed successfully")
 
         except requests.exceptions.RequestException as e:
             self._handle_download_error(e, dataset_id)
@@ -100,17 +86,15 @@ class KaggleDatasetMixin:
             raise
 
         except Exception as e:
-            self._handle_generic_error(e, zip_path)
-            raise
+            self._cleanup_on_error(zip_path)
+            logger.error(f"Unexpected error: {str(e)}")
+            raise RuntimeError(f"Dataset download failed: {str(e)}") from e
 
-    def _download_with_progress(self, url: str, output_path: Path) -> None:
-        """Download file from URL with progress display.
+    def _download_file(self, dataset_id: str, output_path: Path) -> None:
+        """Download file from Kaggle API."""
+        kaggle_url = f"https://www.kaggle.com/api/v1/datasets/download/{dataset_id}"
 
-        Args:
-            url: URL to download from
-            output_path: Path to save downloaded file
-        """
-        response = requests.get(url, stream=True)
+        response = requests.get(kaggle_url, stream=True)
         response.raise_for_status()
 
         total_size = int(response.headers.get("content-length", 0))
@@ -126,124 +110,79 @@ class KaggleDatasetMixin:
                         print(f"\rProgress: {progress:.1f}%", end="", flush=True)
                 print()  # New line after progress
             else:
-                # No content-length header, just download
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-                print("Download completed (size unknown)")
 
-        print(f"Download completed: {output_path}")
+        logger.info(f"Download completed: {output_path}")
 
     def _extract_zip(self, zip_path: Path) -> None:
-        """Extract zip file to dataset root.
-
-        Args:
-            zip_path: Path to zip file
-        """
+        """Extract zip file to root directory."""
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(self.root)
 
     def _handle_download_error(self, error: Exception, dataset_id: str) -> None:
-        """Handle download errors and show manual instructions.
-
-        Args:
-            error: The exception that occurred
-            dataset_id: Kaggle dataset ID
-        """
-        print(f"\nError downloading dataset: {error}")
-        print("Please check your internet connection and Kaggle API credentials.")
-        print("\nManual download instructions:")
-
-        instructions = self._get_manual_download_instructions()
-        for instruction in instructions:
-            print(instruction)
+        """Handle download errors with helpful messages."""
+        logger.error(f"Download failed: {str(error)}")
+        print(f"\n❌ Error downloading dataset: {str(error)}")
+        print("\n📝 Please check:")
+        print("   1. Internet connection")
+        print("   2. Kaggle API credentials (~/.kaggle/kaggle.json)")
+        print(f"   3. Dataset access: https://www.kaggle.com/datasets/{dataset_id}")
+        print("\n💡 Manual download:")
+        print(f"   1. Visit: https://www.kaggle.com/datasets/{dataset_id}")
+        print(f"   2. Download to: {self.root}")
+        print("   3. Extract the files")
 
     def _handle_zip_error(self, error: Exception, zip_path: Path) -> None:
-        """Handle zip extraction errors.
+        """Handle zip extraction errors."""
+        logger.error(f"Zip extraction failed: {str(error)}")
+        print(f"\n❌ Error extracting zip file: {str(error)}")
 
-        Args:
-            error: The exception that occurred
-            zip_path: Path to the problematic zip file
-        """
-        print(f"\nError extracting zip file: {error}")
         if zip_path.exists():
             zip_path.unlink()
             print("Removed corrupted zip file")
 
-    def _handle_generic_error(self, error: Exception, zip_path: Path) -> None:
-        """Handle generic errors during download.
-
-        Args:
-            error: The exception that occurred
-            zip_path: Path to zip file (may not exist)
-        """
-        print(f"\nUnexpected error during download: {error}")
+    def _cleanup_on_error(self, zip_path: Path) -> None:
+        """Clean up files after error."""
         if zip_path.exists():
-            zip_path.unlink()
-            print("Cleaned up partial download")
+            try:
+                zip_path.unlink()
+                logger.info("Cleaned up partial download")
+            except Exception as e:
+                logger.warning(f"Failed to clean up: {str(e)}")
 
-    def _find_and_move_file(
-        self, filename: str, search_patterns: Optional[list[str]] = None
-    ) -> bool:
-        """Find a file in dataset root (recursively) and move to root if needed.
-
-        Args:
-            filename: Name of file to find
-            search_patterns: Alternative name patterns to search for
-
-        Returns:
-            True if file was found, False otherwise
+    def _find_file(self, filename: str) -> Optional[Path]:
         """
-        expected_path = self.root / filename
-
-        # Already in the right place
-        if expected_path.exists():
-            return True
-
-        # Search for the file
-        search_names = [filename]
-        if search_patterns:
-            search_names.extend(search_patterns)
-
-        for search_name in search_names:
-            for found_file in self.root.rglob(search_name):
-                if found_file.is_file():
-                    print(
-                        f"Found {filename} at {found_file}, moving to {expected_path}"
-                    )
-                    shutil.move(str(found_file), str(expected_path))
-                    return True
-
-        return False
-
-    def _find_and_move_directory(
-        self, dirname: str, search_patterns: Optional[list[str]] = None
-    ) -> bool:
-        """Find a directory in dataset root (recursively) and move to root if needed.
-
-        Args:
-            dirname: Name of directory to find
-            search_patterns: Alternative name patterns to search for
-
-        Returns:
-            True if directory was found, False otherwise
+        Find a file anywhere in root directory.
+        Returns first match or None.
         """
-        expected_path = self.root / dirname
+        for path in self.root.rglob(filename):
+            if path.is_file():
+                return path
+        return None
 
-        # Already in the right place
-        if expected_path.exists() and expected_path.is_dir():
-            return True
+    def _find_directory(self, dirname: str) -> Optional[Path]:
+        """
+        Find a directory anywhere in root directory.
+        Returns first match or None.
+        """
+        for path in self.root.rglob(dirname):
+            if path.is_dir():
+                return path
+        return None
 
-        # Search for the directory
-        search_names = [dirname]
-        if search_patterns:
-            search_names.extend(search_patterns)
+    def _move_to_root(self, source: Path, target_name: str) -> Path:
+        """Move file or directory to root with new name."""
+        target = self.root / target_name
 
-        for search_name in search_names:
-            for found_dir in self.root.rglob(search_name):
-                if found_dir.is_dir():
-                    print(f"Found {dirname} at {found_dir}, moving to {expected_path}")
-                    shutil.move(str(found_dir), str(expected_path))
-                    return True
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
 
-        return False
+        shutil.move(str(source), str(target))
+        logger.info(f"Moved {source.name} to {target_name}")
+
+        return target

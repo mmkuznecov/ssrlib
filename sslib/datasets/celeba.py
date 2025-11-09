@@ -5,9 +5,12 @@ from PIL import Image
 from torchvision import transforms
 from typing import Iterator, Dict, Any, Optional, Tuple, List, Union, ClassVar
 from pathlib import Path
+import logging
 
 from .base import BaseDataset
 from .kaggle_mixin import KaggleDatasetMixin
+
+logger = logging.getLogger(__name__)
 
 
 class CelebADataset(KaggleDatasetMixin, BaseDataset):
@@ -27,6 +30,10 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         "task_type": "binary_classification",
     }
 
+    # Expected files and directories
+    REQUIRED_FILES = ["list_eval_partition.csv", "list_attr_celeba.csv"]
+    REQUIRED_DIRS = ["img_align_celeba/img_align_celeba"]
+
     def __init__(
         self,
         root: str = "data",
@@ -35,22 +42,14 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         transform: Optional[transforms.Compose] = None,
         **kwargs,
     ):
-        """Initialize CelebA dataset.
-
-        Args:
-            root: Root directory for dataset (default: "data")
-            split: Which split to use ('train', 'valid', 'test')
-            task_name: Name of the attribute to predict
-            transform: Optional transform for images
-        """
+        """Initialize CelebA dataset."""
         super().__init__("CelebA", **kwargs)
 
-        # Set root path with CelebA subdirectory
         self.root = Path(root) / "CelebA"
         self.split = split
         self.task_name = task_name
 
-        # Set default transform if none provided
+        # Set default transform
         if transform is None:
             self.transform = transforms.Compose(
                 [
@@ -65,138 +64,171 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         else:
             self.transform = transform
 
-        # Define expected file paths
-        self.split_csv = self.root / "list_eval_partition.csv"
-        self.attr_csv = self.root / "list_attr_celeba.csv"
-        self.images_dir = self.root / "img_align_celeba" / "img_align_celeba"
+        # File paths (set after verification)
+        self.split_csv = None
+        self.attr_csv = None
+        self.images_dir = None
 
-        # Will be loaded after download/check
         self.data = None
         self.attr_names = None
 
-        # Update metadata
         self._metadata.update(
             {"split": split, "task_name": task_name, "root": str(self.root)}
         )
 
-        # Check if dataset exists, download if not
-        if not self._check_dataset():
-            print(f"Downloading CelebA to {self.root}")
+        # Download if needed
+        if not self._check_exists():
+            logger.info(f"CelebA not found, downloading to {self.root}")
+            print(f"CelebA not found, downloading to {self.root}")
             self._download()
 
-        # Load the data
         self._load_data()
         self._downloaded = True
 
     def _get_kaggle_dataset_id(self) -> str:
-        """Get Kaggle dataset ID for CelebA."""
+        """Get Kaggle dataset ID."""
         return "jessicali9530/celeba-dataset"
 
-    def _get_manual_download_instructions(self) -> list[str]:
-        """Get manual download instructions for CelebA."""
-        return [
-            f"1. Go to https://www.kaggle.com/datasets/{self._get_kaggle_dataset_id()}",
-            f"2. Download the dataset manually to {self.root}",
-            "3. Extract and organize with the following structure:",
-            "   - list_eval_partition.csv",
-            "   - list_attr_celeba.csv",
-            "   - img_align_celeba/img_align_celeba/ (directory with images)",
-        ]
-
-    def _organize_extracted_files(self) -> None:
-        """Organize CelebA files after extraction.
-
-        The Kaggle download typically extracts to the correct structure already.
-        We just verify and search for missing files if needed.
-        """
-        # Check if files are already in the right place
-        files_ok = (
-            self.split_csv.exists()
-            and self.attr_csv.exists()
-            and self.images_dir.exists()
-        )
-
-        if files_ok:
-            print("Dataset structure is already correct")
-            return
-
-        # If not, try to find and organize files
-        print("Organizing dataset structure...")
-
-        # Find and move CSV files if needed
-        csv_files = ["list_eval_partition.csv", "list_attr_celeba.csv"]
-        for csv_name in csv_files:
-            if not (self.root / csv_name).exists():
-                found = self._find_and_move_file(csv_name)
-                if not found:
-                    raise FileNotFoundError(
-                        f"Could not find {csv_name} after extraction"
-                    )
-
-        # Find image directory if needed
-        if not self.images_dir.exists():
-            # First check if img_align_celeba directory exists at root level
-            parent_img_dir = self.root / "img_align_celeba"
-            if parent_img_dir.exists():
-                # Check if images are directly in this directory or in a subdirectory
-                image_files = list(parent_img_dir.glob("*.jpg"))
-                if image_files:
-                    # Images are directly in img_align_celeba, need to create subdirectory
-                    print(
-                        "Images found directly in img_align_celeba, creating proper structure..."
-                    )
-                    self.images_dir.mkdir(parents=True, exist_ok=True)
-                    for img_file in image_files:
-                        img_file.rename(self.images_dir / img_file.name)
-                elif (parent_img_dir / "img_align_celeba").exists():
-                    # Already in correct structure
-                    print("Image directory structure is correct")
-                else:
-                    raise FileNotFoundError(
-                        "img_align_celeba directory exists but contains no images"
-                    )
-            else:
-                # Try to find img_align_celeba anywhere in the root
-                found = self._find_and_move_directory("img_align_celeba")
-                if not found:
-                    raise FileNotFoundError(
-                        "Could not find img_align_celeba directory after extraction"
-                    )
-
-    def _check_dataset(self) -> bool:
-        """Check if dataset is already downloaded and properly structured."""
-        required_files = [self.split_csv, self.attr_csv]
-
-        # Check if all required files exist and images directory exists
-        files_exist = all(f.exists() for f in required_files)
-        images_exist = self.images_dir.exists() and any(self.images_dir.iterdir())
-
-        if files_exist and images_exist:
-            print(f"CelebA dataset found at {self.root}")
-            return True
-        else:
+    def _check_exists(self) -> bool:
+        """Check if dataset exists and is properly structured."""
+        if not self.root.exists():
             return False
 
+        return self._verify_structure()
+
+    def _verify_structure(self) -> bool:
+        """
+        Verify CelebA structure is correct.
+
+        Expected structure:
+        CelebA/
+        ├── list_eval_partition.csv
+        ├── list_attr_celeba.csv
+        └── img_align_celeba/
+            └── img_align_celeba/
+                ├── 000001.jpg
+                ├── 000002.jpg
+                └── ...
+        """
+        logger.info("Verifying CelebA structure...")
+
+        # Find required files
+        self.split_csv = self._find_required_file("list_eval_partition.csv")
+        self.attr_csv = self._find_required_file("list_attr_celeba.csv")
+        self.images_dir = self._find_required_directory("img_align_celeba")
+
+        # Check all found
+        if not (self.split_csv and self.attr_csv and self.images_dir):
+            return False
+
+        # Verify images exist
+        image_files = list(self.images_dir.glob("*.jpg"))
+        if len(image_files) == 0:
+            logger.error("No images found in img_align_celeba directory")
+            return False
+
+        logger.info(f"✓ Structure verified: {len(image_files)} images found")
+        print(f"✓ CelebA structure verified: {len(image_files)} images found")
+
+        return True
+
+    def _find_required_file(self, filename: str) -> Optional[Path]:
+        """Find required file and move to root if needed."""
+        # Check if already in root
+        target_path = self.root / filename
+        if target_path.exists():
+            logger.info(f"✓ Found {filename}")
+            return target_path
+
+        # Search for file
+        found_path = self._find_file(filename)
+        if found_path:
+            logger.info(f"Found {filename} at {found_path}, moving to root")
+            return self._move_to_root(found_path, filename)
+
+        logger.error(f"✗ {filename} not found")
+        return None
+
+    def _find_required_directory(self, dirname: str) -> Optional[Path]:
+        """
+        Find required image directory and organize if needed.
+
+        Handles various extraction patterns:
+        - img_align_celeba/img_align_celeba/  (correct)
+        - img_align_celeba/                  (needs nesting)
+        - Images directly in root             (needs organization)
+        """
+        target_path = self.root / "img_align_celeba" / "img_align_celeba"
+
+        # Already correct structure
+        if target_path.exists() and target_path.is_dir():
+            logger.info(f"✓ Found {dirname}")
+            return target_path
+
+        # Find img_align_celeba directory
+        parent_dir = self.root / "img_align_celeba"
+
+        if parent_dir.exists():
+            # Check if images are directly in parent
+            image_files = list(parent_dir.glob("*.jpg"))
+
+            if image_files:
+                # Need to create nested structure
+                logger.info("Creating nested img_align_celeba directory...")
+                target_path.mkdir(parents=True, exist_ok=True)
+
+                # Move images to nested directory
+                for img_file in image_files:
+                    img_file.rename(target_path / img_file.name)
+
+                logger.info(f"✓ Organized {len(image_files)} images")
+                return target_path
+
+            elif target_path.exists():
+                # Nested directory exists
+                return target_path
+
+        # Try to find directory anywhere
+        found_dir = self._find_directory("img_align_celeba")
+        if found_dir:
+            logger.info(f"Found img_align_celeba at {found_dir}")
+
+            # Check if it needs nesting
+            if found_dir.parent != self.root:
+                found_dir = self._move_to_root(found_dir, "img_align_celeba")
+
+            # Ensure nested structure
+            if found_dir == parent_dir:
+                image_files = list(found_dir.glob("*.jpg"))
+                if image_files:
+                    target_path.mkdir(parents=True, exist_ok=True)
+                    for img_file in image_files:
+                        img_file.rename(target_path / img_file.name)
+
+            return target_path
+
+        logger.error(f"✗ {dirname} directory not found")
+        return None
+
     def download(self) -> None:
-        """Download CelebA dataset if not already present."""
+        """Download CelebA dataset if not present."""
         if self._downloaded:
             return
 
-        if not self._check_dataset():
-            print(f"Downloading CelebA to {self.root}")
+        if not self._check_exists():
             self._download()
             self._load_data()
 
         self._downloaded = True
 
     def _download(self) -> None:
-        """Download CelebA dataset from Kaggle."""
+        """Download dataset from Kaggle."""
         self._download_from_kaggle(zip_filename="celeba_dataset.zip")
 
-    def _load_data(self):
+    def _load_data(self) -> None:
         """Load dataset metadata."""
-        if not self.split_csv.exists() or not self.attr_csv.exists():
-            raise FileNotFoundError(f"Required CSV files not found in {self.root}")
+        if not self.split_csv or not self.attr_csv:
+            raise RuntimeError("Dataset files not found. Run download() first.")
 
         # Load split information
         split_df = pd.read_csv(self.split_csv)
@@ -205,12 +237,12 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
 
         # Load attributes
         attr_df = pd.read_csv(self.attr_csv)
-        self.attr_names = list(attr_df.columns[1:])  # Store all attribute names
+        self.attr_names = list(attr_df.columns[1:])
 
         # Validate task name
         if self.task_name not in self.attr_names:
             raise ValueError(
-                f"Unknown task {self.task_name}. Available: {self.attr_names}"
+                f"Unknown task '{self.task_name}'. Available: {self.attr_names}"
             )
 
         # Merge data
@@ -220,6 +252,8 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
             on="image_id",
             how="left",
         )
+
+        logger.info(f"Loaded {len(self.data)} samples for split '{self.split}'")
 
     def __getitem__(
         self, idx: Union[int, slice]
@@ -257,13 +291,13 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         if self.transform:
             image = self.transform(image)
 
-        # Get target (convert from -1/1 to 0/1 for standard classification)
+        # Get target (convert from -1/1 to 0/1)
         target = torch.tensor(1 if row[self.task_name] == 1 else 0, dtype=torch.long)
 
         return image, target
 
     def __iter__(self) -> Iterator[torch.Tensor]:
-        """Iterate over dataset returning image tensors only (for pipeline compatibility)."""
+        """Iterate over dataset returning image tensors only."""
         if self.data is None:
             self.download()
 
@@ -271,8 +305,8 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
             try:
                 image, _ = self._get_single_item(idx)
                 yield image
-            except (FileNotFoundError, Exception) as e:
-                print(f"Warning: Skipping sample {idx}: {e}")
+            except Exception as e:
+                logger.warning(f"Skipping sample {idx}: {str(e)}")
                 continue
 
     def __len__(self) -> int:
@@ -282,7 +316,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         return len(self.data)
 
     def __repr__(self) -> str:
-        """String representation of dataset."""
+        """String representation."""
         return (
             f"CelebADataset(split='{self.split}', task='{self.task_name}', "
             f"size={len(self) if self.data is not None else 'Unknown'}, "
@@ -290,7 +324,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         )
 
     def get_classes(self) -> Dict[str, Any]:
-        """Get class information for the current task."""
+        """Get class information."""
         return {
             "task_name": self.task_name,
             "num_classes": 2,
