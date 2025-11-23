@@ -186,45 +186,59 @@ pip install -e .
 ```
 SSLib/
 ├── core/                    # Core pipeline and configuration
-│   ├── pipeline.py         # Pipeline orchestration
-│   ├── config.py           # Configuration management
+│   ├── pipeline.py          # Pipeline orchestration
+│   ├── config.py            # Configuration management
+│   └── registry.py          # Generic discovery/registry
 │
-├── datasets/               # Dataset implementations
-│   ├── __init__.py         # Auto-discovery registry
-│   ├── base.py             # BaseDataset
-│   ├── celeba.py           # CelebA dataset
-│   ├── imagenet100.py      # ImageNet-100
-│   └── synthtest_dataset.py # Synthetic test data
+├── datasets/                # Dataset implementations
+│   ├── __init__.py          # Auto-discovery registry
+│   ├── base.py              # BaseDataset
+│   ├── celeba.py            # CelebA dataset
+│   ├── cifar10.py           # CIFAR-10
+│   ├── food101.py           # Food-101
+│   ├── imagenet100.py       # ImageNet-100
+│   ├── synthtest_dataset.py # Synthetic test data
+│   ├── hf_mixin.py          # HuggingFace helpers
+│   └── kaggle_mixin.py      # Kaggle helpers
 │
-├── embedders/              # Embedding models
-│   ├── __init__.py         # Auto-discovery registry
-│   ├── base.py             # BaseEmbedder
-│   ├── cv/                 # Computer vision embedders
-│   │   ├── dinov2.py       # DINOv2 models
-│   │   ├── dino.py         # DINO (original)
-│   │   ├── clip.py         # CLIP models
-│   │   └── vicreg.py       # VICReg
-│   └── nlp/                # NLP embedders
-│       ├── bert.py         # BERT variants
-│       ├── e5.py           # E5 multilingual
-│       └── modernbert.py   # ModernBERT
+├── embedders/               # Embedding models
+│   ├── __init__.py          # Auto-discovery registry
+│   ├── base.py              # BaseEmbedder
+│   ├── cv/                  # Computer vision embedders
+│   │   ├── __init__.py
+│   │   ├── dinov2.py        # DINOv2 models
+│   │   ├── dino.py          # DINO (original)
+│   │   ├── clip.py          # CLIP models
+│   │   └── vicreg.py        # VICReg
+│   └── nlp/                 # NLP embedders
+│       ├── __init__.py
+│       ├── bert.py          # BERT variants
+│       ├── bert_base.py     # Base class for BERT-like models
+│       ├── e5.py            # E5 multilingual
+│       └── modernbert.py    # ModernBERT
 │
-├── processing/             # Post-processing & analysis
-│   ├── base.py             # BaseProcessor
-│   ├── covariance.py       # Covariance computation
-│   ├── zca.py              # ZCA whitening
-│   ├── effective_rank.py  # Effective rank metric
-│   └── leverage_scores.py # Leverage score analysis
+├── processing/              # Post-processing & analysis
+│   ├── __init__.py          # Auto-discovery registry for processors
+│   ├── base.py              # BaseProcessor
+│   ├── covariance.py        # Covariance computation
+│   ├── zca.py               # ZCA whitening
+│   ├── effective_rank.py    # Effective rank metric
+│   ├── leverage_scores.py   # Row leverage scores
+│   ├── stable_rank.py       # Stable rank metric
+│   ├── spectrum.py          # Covariance spectrum
+│   └── pairwise_stats.py    # Pairwise distance statistics
 │
-├── losses/                 # Loss functions (for training)
-│   ├── base.py             # BaseLoss
-│   ├── infonce_loss.py     # InfoNCE (SimCLR)
-│   ├── contrastive_loss.py # Standard contrastive
-│   ├── triplet_loss.py     # Triplet loss
-│   └── deepinfomax_loss.py # Deep InfoMax
+├── losses/                  # Loss functions (for training)
+│   ├── __init__.py
+│   ├── base.py              # BaseLoss
+│   ├── infonce_loss.py      # InfoNCE (SimCLR)
+│   ├── contrastive_loss.py  # Standard contrastive
+│   ├── triplet_loss.py      # Triplet loss
+│   └── deepinfomax_loss.py  # Deep InfoMax
 │
-└── storage/                # Caching & persistence
-    └── tensor_storage.py   # TensorStorage for embeddings
+└── storage/                 # Caching & persistence
+    ├── __init__.py
+    └── tensor_storage.py    # TensorStorage for embeddings
 ```
 
 ---
