@@ -46,9 +46,7 @@ class HFDatasetMixin:
         """
         pass
 
-    def _load_from_huggingface(
-        self, split: str, cache_dir: Optional[str] = None
-    ) -> None:
+    def _load_from_huggingface(self, split: str, cache_dir: Optional[str] = None) -> None:
         """
         Load dataset from Hugging Face Hub.
 
@@ -143,16 +141,10 @@ class HFDatasetMixin:
 
                 # Create bidirectional mapping
                 sorted_labels = sorted(list(all_labels))
-                self.label_to_idx = {
-                    label: idx for idx, label in enumerate(sorted_labels)
-                }
-                self.idx_to_label = {
-                    idx: label for label, idx in self.label_to_idx.items()
-                }
+                self.label_to_idx = {label: idx for idx, label in enumerate(sorted_labels)}
+                self.idx_to_label = {idx: label for label, idx in self.label_to_idx.items()}
 
-                logger.info(
-                    f"✓ Created label mapping for {len(self.label_to_idx)} classes"
-                )
+                logger.info(f"✓ Created label mapping for {len(self.label_to_idx)} classes")
                 print(f"✓ Label mapping: {len(self.label_to_idx)} classes")
 
         except Exception as e:
@@ -240,9 +232,7 @@ class HFDatasetMixin:
             pass
 
         # Fallback: count unique labels
-        logger.warning(
-            "Could not determine number of classes, counting unique labels..."
-        )
+        logger.warning("Could not determine number of classes, counting unique labels...")
         try:
             unique_labels = set(self.hf_dataset[self.label_key])
             return len(unique_labels)

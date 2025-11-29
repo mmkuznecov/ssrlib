@@ -33,9 +33,7 @@ class MockLocalDiscriminator(nn.Module):
 
     def __init__(self, output_channels: int = 1):
         super().__init__()
-        self.conv = nn.Conv2d(
-            1, output_channels, kernel_size=1
-        )  # Minimal implementation
+        self.conv = nn.Conv2d(1, output_channels, kernel_size=1)  # Minimal implementation
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for local discriminator.
@@ -154,9 +152,7 @@ class DeepInfoMaxLoss(BaseLoss):
         self.beta = beta
         self.gamma = gamma
 
-    def forward(
-        self, y: torch.Tensor, M: torch.Tensor, M_prime: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, M: torch.Tensor, M_prime: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of DeepInfoMaxLoss.
 
@@ -174,14 +170,10 @@ class DeepInfoMaxLoss(BaseLoss):
 
         # Get spatial dimensions from feature maps
         _, _, height, width = M.shape
-        y_exp = y_exp.expand(
-            -1, -1, height, width
-        )  # [batch_size, encoding_dim, height, width]
+        y_exp = y_exp.expand(-1, -1, height, width)  # [batch_size, encoding_dim, height, width]
 
         # Concatenate feature maps with expanded representations
-        y_M = torch.cat(
-            (M, y_exp), dim=1
-        )  # [batch_size, channels + encoding_dim, height, width]
+        y_M = torch.cat((M, y_exp), dim=1)  # [batch_size, channels + encoding_dim, height, width]
         y_M_prime = torch.cat((M_prime, y_exp), dim=1)
 
         # Local discriminator loss
@@ -269,9 +261,7 @@ def example_usage():
     feature_size = 26
 
     y = torch.randn(batch_size, encoding_dim, device=device)
-    M = torch.randn(
-        batch_size, feature_channels, feature_size, feature_size, device=device
-    )
+    M = torch.randn(batch_size, feature_channels, feature_size, feature_size, device=device)
     M_prime = create_negative_samples(M, method="rotate")
 
     # Compute loss

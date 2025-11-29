@@ -56,9 +56,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
                     transforms.Resize(256),
                     transforms.CenterCrop(224),
                     transforms.ToTensor(),
-                    transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                    ),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ]
             )
         else:
@@ -72,9 +70,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
         self.data = None
         self.attr_names = None
 
-        self._metadata.update(
-            {"split": split, "task_name": task_name, "root": str(self.root)}
-        )
+        self._metadata.update({"split": split, "task_name": task_name, "root": str(self.root)})
 
         # Download if needed
         if not self._check_exists():
@@ -241,9 +237,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
 
         # Validate task name
         if self.task_name not in self.attr_names:
-            raise ValueError(
-                f"Unknown task '{self.task_name}'. Available: {self.attr_names}"
-            )
+            raise ValueError(f"Unknown task '{self.task_name}'. Available: {self.attr_names}")
 
         # Merge data
         self.data = pd.merge(
@@ -257,9 +251,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
 
     def __getitem__(
         self, idx: Union[int, slice]
-    ) -> Union[
-        Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]
-    ]:
+    ) -> Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]:
         """Get item(s) by index."""
         if self.data is None:
             self.download()
@@ -273,9 +265,7 @@ class CelebADataset(KaggleDatasetMixin, BaseDataset):
     def _get_single_item(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get a single item by index."""
         if idx >= len(self.data) or idx < -len(self.data):
-            raise IndexError(
-                f"Index {idx} out of range for dataset of size {len(self.data)}"
-            )
+            raise IndexError(f"Index {idx} out of range for dataset of size {len(self.data)}")
 
         if idx < 0:
             idx = len(self.data) + idx

@@ -7,9 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 import shutil
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class TensorStorage:
@@ -53,9 +51,7 @@ class TensorStorage:
 
         # Set chunk size with priority: provided > metadata > default
         default_chunk_size = 3 * 2**20 * np.dtype(np.float32).itemsize
-        self.chunk_size = (
-            chunk_size or self.metadata.get("chunk_size") or default_chunk_size
-        )
+        self.chunk_size = chunk_size or self.metadata.get("chunk_size") or default_chunk_size
 
         self.loaded_chunks = {}
         self.current_window = []
@@ -123,9 +119,7 @@ class TensorStorage:
                 self._load_chunk(chunk_id)
         self.current_window = list(new_window)
 
-    def __getitem__(
-        self, idx: int
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Dict[str, Any]]]:
+    def __getitem__(self, idx: int) -> Union[np.ndarray, Tuple[np.ndarray, Dict[str, Any]]]:
         """
         Retrieve a tensor from storage by its index.
 
@@ -162,11 +156,7 @@ class TensorStorage:
 
         # Get metadata if requested
         if self.metadata_df is not None and not self.metadata_df.empty:
-            metadata = (
-                self.metadata_df[self.metadata_df["tensor_idx"] == idx]
-                .iloc[0]
-                .to_dict()
-            )
+            metadata = self.metadata_df[self.metadata_df["tensor_idx"] == idx].iloc[0].to_dict()
         else:
             metadata = {}
 
@@ -233,9 +223,7 @@ class TensorStorage:
 
         return info
 
-    def get_tensor_by_param(
-        self, param_name: str, param_value: Any
-    ) -> Optional[np.ndarray]:
+    def get_tensor_by_param(self, param_name: str, param_value: Any) -> Optional[np.ndarray]:
         """
         Retrieve a tensor by querying a parameter in the metadata.
 
@@ -361,9 +349,7 @@ class TensorStorage:
 
         progress_bar = tqdm(desc="Processing arrays", unit="array")
 
-        for idx, (arr, metadata_dict) in enumerate(
-            zip(data_iterator, metadata_iterator)
-        ):
+        for idx, (arr, metadata_dict) in enumerate(zip(data_iterator, metadata_iterator)):
             total_elements += 1
             progress_bar.update(1)
 
@@ -371,9 +357,7 @@ class TensorStorage:
             arr_size = flat_arr.nbytes
 
             if arr_size > storage.chunk_size:
-                raise ValueError(
-                    f"Array at index {idx} is larger than the maximum chunk size"
-                )
+                raise ValueError(f"Array at index {idx} is larger than the maximum chunk size")
 
             # Handle chunk storage
             if current_chunk_size + arr_size > storage.chunk_size:

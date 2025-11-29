@@ -53,9 +53,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
                     transforms.Resize(256),
                     transforms.CenterCrop(224),
                     transforms.ToTensor(),
-                    transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                    ),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ]
             )
         else:
@@ -319,9 +317,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
 
     def __getitem__(
         self, idx: Union[int, slice]
-    ) -> Union[
-        Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]
-    ]:
+    ) -> Union[Tuple[torch.Tensor, torch.Tensor], List[Tuple[torch.Tensor, torch.Tensor]]]:
         """Get item(s) by index."""
         if not self._downloaded:
             self.download()
@@ -335,9 +331,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
     def _get_single_item(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get a single item by index."""
         if idx >= len(self.samples) or idx < -len(self.samples):
-            raise IndexError(
-                f"Index {idx} out of range for dataset of size {len(self.samples)}"
-            )
+            raise IndexError(f"Index {idx} out of range for dataset of size {len(self.samples)}")
 
         if idx < 0:
             idx = len(self.samples) + idx
@@ -392,9 +386,7 @@ class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
             "class_names": self.class_names.copy(),
             "class_to_idx": self.class_to_idx.copy(),
             "idx_to_class": self.idx_to_class.copy(),
-            "synset_to_class": (
-                self.synset_to_class.copy() if self.synset_to_class else {}
-            ),
+            "synset_to_class": (self.synset_to_class.copy() if self.synset_to_class else {}),
         }
 
     def get_class_name(self, idx: int) -> str:

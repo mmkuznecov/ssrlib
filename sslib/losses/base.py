@@ -158,9 +158,7 @@ class BaseLoss(nn.Module, ABC):
 
     def __repr__(self) -> str:
         """String representation of the loss function."""
-        config_str = ", ".join(
-            f"{k}={v}" for k, v in self.get_config().items() if v is not None
-        )
+        config_str = ", ".join(f"{k}={v}" for k, v in self.get_config().items() if v is not None)
         return f"{self.__class__.__name__}({config_str})"
 
 
@@ -187,7 +185,5 @@ class ContrastiveLossBase(BaseLoss):
     def get_config(self) -> Dict[str, Any]:
         """Get configuration including contrastive-specific parameters."""
         config = super().get_config()
-        config.update(
-            {"margin": self.margin, "distance_metric": self.distance_metric.value}
-        )
+        config.update({"margin": self.margin, "distance_metric": self.distance_metric.value})
         return config

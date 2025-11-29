@@ -85,8 +85,7 @@ class E5Embedder(BaseEmbedder):
 
         if model_name not in self.AVAILABLE_MODELS:
             raise ValueError(
-                f"Unknown model {model_name}. "
-                f"Available: {list(self.AVAILABLE_MODELS.keys())}"
+                f"Unknown model {model_name}. " f"Available: {list(self.AVAILABLE_MODELS.keys())}"
             )
 
         self.model_name = model_name
@@ -94,9 +93,7 @@ class E5Embedder(BaseEmbedder):
         self.embedding_dim = self.AVAILABLE_MODELS[model_name]["embedding_dim"]
         self.normalize = normalize
         self.tokenizer = None
-        self.is_instruct = self.AVAILABLE_MODELS[model_name].get(
-            "instruction_following", False
-        )
+        self.is_instruct = self.AVAILABLE_MODELS[model_name].get("instruction_following", False)
 
         # Update metadata
         self._metadata.update(
@@ -145,9 +142,7 @@ class E5Embedder(BaseEmbedder):
         Returns:
             Pooled embeddings
         """
-        last_hidden = last_hidden_states.masked_fill(
-            ~attention_mask[..., None].bool(), 0.0
-        )
+        last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0)
         return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None]
 
     def forward(self, batch: torch.Tensor) -> torch.Tensor:

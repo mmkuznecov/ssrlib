@@ -149,9 +149,7 @@ __all__ = [
 
 # Log results
 if logger.isEnabledFor(logging.INFO):
-    logger.info(
-        f"Dataset discovery complete: {len(_dataset_registry.list_all())} datasets found"
-    )
+    logger.info(f"Dataset discovery complete: {len(_dataset_registry.list_all())} datasets found")
     for category, datasets in _dataset_registry.list_by_category().items():
         logger.info(f"  {category}: {', '.join(datasets)}")
 

@@ -63,8 +63,7 @@ class DINOEmbedder(BaseEmbedder):
 
         if model_name not in self.AVAILABLE_MODELS:
             raise ValueError(
-                f"Unknown model {model_name}. "
-                f"Available: {list(self.AVAILABLE_MODELS.keys())}"
+                f"Unknown model {model_name}. " f"Available: {list(self.AVAILABLE_MODELS.keys())}"
             )
 
         self.model_name = model_name

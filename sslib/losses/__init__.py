@@ -112,9 +112,7 @@ __all__ = [
 
 # Log results
 if logger.isEnabledFor(logging.INFO):
-    logger.info(
-        f"Loss discovery complete: {len(_loss_registry.list_all())} losses found"
-    )
+    logger.info(f"Loss discovery complete: {len(_loss_registry.list_all())} losses found")
     for category, losses in _loss_registry.list_by_category().items():
         logger.info(f"  {category}: {', '.join(losses)}")
 

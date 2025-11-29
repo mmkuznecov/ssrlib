@@ -74,11 +74,7 @@ class LeverageScoresProcessor(BaseProcessor):
             else:
                 chosen_k = max(1, min(self.rank, U.shape[1]))
 
-            Uk = (
-                U[:, :chosen_k]
-                if chosen_k > 0
-                else np.zeros((X.shape[0], 0), dtype=np.float64)
-            )
+            Uk = U[:, :chosen_k] if chosen_k > 0 else np.zeros((X.shape[0], 0), dtype=np.float64)
             scores = np.sum(Uk * Uk, axis=1)  # diag(Uk Uk^T)
 
         self._metadata.update(

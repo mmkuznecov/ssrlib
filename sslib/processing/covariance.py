@@ -11,9 +11,7 @@ class CovarianceProcessor(BaseProcessor):
         """Initialize covariance processor."""
         super().__init__("Covariance", **kwargs)
 
-        self._metadata.update(
-            {"processor_type": "covariance", "output_type": "covariance_matrix"}
-        )
+        self._metadata.update({"processor_type": "covariance", "output_type": "covariance_matrix"})
 
     def process(self, embeddings: np.ndarray) -> np.ndarray:
         """Compute covariance matrix of embeddings.

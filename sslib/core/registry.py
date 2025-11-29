@@ -150,9 +150,7 @@ class BaseRegistry(Generic[T]):
                 param_name: {
                     "default": param.default if param.default != param.empty else None,
                     "annotation": (
-                        str(param.annotation)
-                        if param.annotation != param.empty
-                        else None
+                        str(param.annotation) if param.annotation != param.empty else None
                     ),
                 }
                 for param_name, param in sig.parameters.items()
@@ -259,9 +257,7 @@ def discover_components(
     logger.debug(f"Discovering components in {package_path}")
 
     # Iterate through all modules in the package
-    for module_info in pkgutil.walk_packages(
-        [str(package_path)], prefix=f"{package_name}."
-    ):
+    for module_info in pkgutil.walk_packages([str(package_path)], prefix=f"{package_name}."):
         module_name = module_info.name
 
         # Skip specified modules
@@ -289,18 +285,14 @@ def discover_components(
                     if get_category_func:
                         category = get_category_func(obj)
                     elif hasattr(obj, f"get_{registry.component_type_name}_category"):
-                        category = getattr(
-                            obj, f"get_{registry.component_type_name}_category"
-                        )()
+                        category = getattr(obj, f"get_{registry.component_type_name}_category")()
 
                     # Get modality
                     modality = None
                     if get_modality_func:
                         modality = get_modality_func(obj)
                     elif hasattr(obj, f"get_{registry.component_type_name}_modality"):
-                        modality = getattr(
-                            obj, f"get_{registry.component_type_name}_modality"
-                        )()
+                        modality = getattr(obj, f"get_{registry.component_type_name}_modality")()
 
                     # Get output type
                     output_type = None

@@ -33,9 +33,7 @@ class DINOv2Embedder(BaseEmbedder):
         "dinov2_vitg14_reg": {"embedding_dim": 1536},
     }
 
-    def __init__(
-        self, model_name: str = "dinov2_vitb14", device: str = "cpu", **kwargs
-    ):
+    def __init__(self, model_name: str = "dinov2_vitb14", device: str = "cpu", **kwargs):
         """Initialize DINOv2 embedder.
 
         Args:
@@ -47,8 +45,7 @@ class DINOv2Embedder(BaseEmbedder):
 
         if model_name not in self.AVAILABLE_MODELS:
             raise ValueError(
-                f"Unknown model {model_name}. "
-                f"Available: {list(self.AVAILABLE_MODELS.keys())}"
+                f"Unknown model {model_name}. " f"Available: {list(self.AVAILABLE_MODELS.keys())}"
             )
 
         self.model_name = model_name

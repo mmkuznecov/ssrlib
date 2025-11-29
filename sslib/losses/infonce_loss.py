@@ -146,9 +146,7 @@ def info_nce(
 
     # Check matching number of samples
     if len(query) != len(positive_key):
-        raise ValueError(
-            "<query> and <positive_key> must have the same number of samples."
-        )
+        raise ValueError("<query> and <positive_key> must have the same number of samples.")
     if negative_keys is not None:
         if negative_mode == "paired" and len(query) != len(negative_keys):
             raise ValueError(
@@ -168,9 +166,7 @@ def info_nce(
 
     # Normalize to unit vectors if requested
     if normalize:
-        query, positive_key, negative_keys = _normalize(
-            query, positive_key, negative_keys
-        )
+        query, positive_key, negative_keys = _normalize(query, positive_key, negative_keys)
 
     if negative_keys is not None:
         # Explicit negative keys provided

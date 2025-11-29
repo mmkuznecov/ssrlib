@@ -46,9 +46,7 @@ class SynthTestDataset(BaseDataset):
             raise ValueError(f"tensors_num must be positive, got {tensors_num}")
 
         if len(tensor_shape) != 3:
-            raise ValueError(
-                f"tensor_shape must have 3 dimensions, got {len(tensor_shape)}"
-            )
+            raise ValueError(f"tensor_shape must have 3 dimensions, got {len(tensor_shape)}")
 
         # Update metadata
         self._metadata.update(
@@ -70,9 +68,7 @@ class SynthTestDataset(BaseDataset):
             print(f"Synthetic dataset {self.name} ready (no download needed)")
             self._downloaded = True
 
-    def __getitem__(
-        self, idx: Union[int, slice]
-    ) -> Union[torch.Tensor, List[torch.Tensor]]:
+    def __getitem__(self, idx: Union[int, slice]) -> Union[torch.Tensor, List[torch.Tensor]]:
         """Get item(s) by index."""
         if isinstance(idx, slice):
             indices = range(*idx.indices(self.tensors_num))
@@ -83,9 +79,7 @@ class SynthTestDataset(BaseDataset):
     def _get_single_item(self, idx: int) -> torch.Tensor:
         """Get a single tensor by index."""
         if idx >= self.tensors_num or idx < -self.tensors_num:
-            raise IndexError(
-                f"Index {idx} out of range for dataset of size {self.tensors_num}"
-            )
+            raise IndexError(f"Index {idx} out of range for dataset of size {self.tensors_num}")
 
         if idx < 0:
             idx = self.tensors_num + idx

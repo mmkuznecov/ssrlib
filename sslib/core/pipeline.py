@@ -178,9 +178,7 @@ class Pipeline:
             )
 
             # Stage 7: Log cache statistics
-            self._log_cache_statistics(
-                cached_embeddings, embeddings_to_save, use_storage, results
-            )
+            self._log_cache_statistics(cached_embeddings, embeddings_to_save, use_storage, results)
 
             # Stage 8: Process embeddings
             if self.processors:
@@ -190,12 +188,8 @@ class Pipeline:
             self._collect_metadata(dataset_keys, storage, results)
 
             results.timing["total_time"] = time.time() - start_time
-            logger.info(
-                f"Pipeline execution completed in {results.timing['total_time']:.2f}s"
-            )
-            print(
-                f"Pipeline execution completed in {results.timing['total_time']:.2f}s"
-            )
+            logger.info(f"Pipeline execution completed in {results.timing['total_time']:.2f}s")
+            print(f"Pipeline execution completed in {results.timing['total_time']:.2f}s")
 
             return results
 
@@ -325,9 +319,7 @@ class Pipeline:
                 logger.error(f"Failed to load embedder {embedder.name}: {str(e)}")
                 raise
 
-    def _prepare_storage_keys(
-        self, dataset_keys: Dict[Any, str]
-    ) -> Dict[Tuple[Any, Any], str]:
+    def _prepare_storage_keys(self, dataset_keys: Dict[Any, str]) -> Dict[Tuple[Any, Any], str]:
         """
         Create storage keys for all dataset-embedder combinations.
         Complexity: 3
@@ -337,9 +329,7 @@ class Pipeline:
         for dataset in self.datasets:
             dataset_key = dataset_keys[dataset]
             for embedder in self.embedders:
-                storage_key = self._create_storage_key(
-                    dataset_key, embedder.name, dataset
-                )
+                storage_key = self._create_storage_key(dataset_key, embedder.name, dataset)
                 storage_keys_map[(dataset, embedder)] = storage_key
 
         return storage_keys_map
@@ -389,9 +379,7 @@ class Pipeline:
             return loaded_embeddings
 
         for storage_key in storage_keys_needed:
-            matches = storage.metadata_df[
-                storage.metadata_df["storage_key"] == storage_key
-            ]
+            matches = storage.metadata_df[storage.metadata_df["storage_key"] == storage_key]
             if len(matches) > 0:
                 tensor_idx = matches.iloc[0]["tensor_idx"]
                 embeddings = storage[tensor_idx]
@@ -428,12 +416,8 @@ class Pipeline:
                 # Try to use cache or compute
                 if storage_key in cached_embeddings:
                     embeddings = cached_embeddings[storage_key]
-                    logger.info(
-                        f"Using cached embeddings for {dataset_key} + {embedder.name}"
-                    )
-                    print(
-                        f"Using cached embeddings for {dataset_key} + {embedder.name}"
-                    )
+                    logger.info(f"Using cached embeddings for {dataset_key} + {embedder.name}")
+                    print(f"Using cached embeddings for {dataset_key} + {embedder.name}")
                 else:
                     embeddings = self._compute_embeddings(
                         dataset, embedder, dataset_key, batch_size
@@ -447,9 +431,7 @@ class Pipeline:
                         embeddings_to_save[storage_key] = (embeddings, metadata)
 
                 # Store in results
-                self._store_embedding_results(
-                    results, dataset_key, embedder.name, embeddings
-                )
+                self._store_embedding_results(results, dataset_key, embedder.name, embeddings)
 
         return embeddings_to_save
 
@@ -525,12 +507,8 @@ class Pipeline:
             )
         else:
             # Adding to existing storage not yet implemented
-            logger.warning(
-                "Adding to existing storage not implemented, creating new storage"
-            )
-            print(
-                "Warning: Adding to existing storage not implemented, creating new storage"
-            )
+            logger.warning("Adding to existing storage not implemented, creating new storage")
+            print("Warning: Adding to existing storage not implemented, creating new storage")
             storage = self._save_embeddings_to_storage(
                 embeddings_to_save, storage_dir + "_new", storage_description
             )
@@ -600,9 +578,7 @@ class Pipeline:
             cache_hits / total_combinations if total_combinations > 0 else 0
         )
 
-    def _process_embeddings(
-        self, dataset_keys: Dict[Any, str], results: PipelineResults
-    ) -> None:
+    def _process_embeddings(self, dataset_keys: Dict[Any, str], results: PipelineResults) -> None:
         """
         Apply all processors to embeddings.
         Complexity: 4

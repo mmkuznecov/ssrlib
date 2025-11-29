@@ -35,8 +35,7 @@ class TransformerEmbedderBase(BaseEmbedder, ABC):
         # Validate model name
         if model_name not in self.AVAILABLE_MODELS:
             raise ValueError(
-                f"Unknown model {model_name}. "
-                f"Available: {list(self.AVAILABLE_MODELS.keys())}"
+                f"Unknown model {model_name}. " f"Available: {list(self.AVAILABLE_MODELS.keys())}"
             )
 
         # Validate pooling
@@ -98,9 +97,7 @@ class TransformerEmbedderBase(BaseEmbedder, ABC):
         Returns:
             Pooled embeddings
         """
-        input_mask_expanded = (
-            attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        )
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
         sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         return sum_embeddings / sum_mask
@@ -151,9 +148,7 @@ class TransformerEmbedderBase(BaseEmbedder, ABC):
 
         return embeddings
 
-    def embed_texts(
-        self, texts: list, max_length: Optional[int] = None
-    ) -> torch.Tensor:
+    def embed_texts(self, texts: list, max_length: Optional[int] = None) -> torch.Tensor:
         """Embed a list of texts.
 
         Args:

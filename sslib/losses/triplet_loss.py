@@ -63,9 +63,7 @@ class TripletLoss(ContrastiveLossBase):
             Triplet loss
         """
         # Apply normalization if enabled
-        anchor, positive, negative = self.apply_normalization(
-            anchor, positive, negative
-        )
+        anchor, positive, negative = self.apply_normalization(anchor, positive, negative)
 
         # Compute distances
         pos_dist = self.compute_distance(anchor, positive, self.distance_metric)
@@ -175,9 +173,7 @@ class TripletLossWithMining(TripletLoss):
                 if semi_hard_mask.any():
                     # Choose random semi-hard negative
                     semi_hard_negs = neg_indices[semi_hard_mask]
-                    chosen_neg = semi_hard_negs[
-                        torch.randint(len(semi_hard_negs), (1,))
-                    ]
+                    chosen_neg = semi_hard_negs[torch.randint(len(semi_hard_negs), (1,))]
 
                     anchors.append(i)
                     positives.append(pos_indices[torch.argmax(pos_dists)])

@@ -118,9 +118,7 @@ def get_hf_dataset_info(dataset_name: str) -> HFDatasetInfo:
     """
     if dataset_name not in HF_DATASET_REGISTRY:
         available = ", ".join(HF_DATASET_REGISTRY.keys())
-        raise ValueError(
-            f"Unknown HuggingFace dataset: {dataset_name}. " f"Available: {available}"
-        )
+        raise ValueError(f"Unknown HuggingFace dataset: {dataset_name}. " f"Available: {available}")
 
     return HF_DATASET_REGISTRY[dataset_name]
 
