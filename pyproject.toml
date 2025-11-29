@@ -7,7 +7,7 @@ name = "ssllib"
 version = "0.1.0"
 description = "A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Mikhail Kuznetov", email = "mmkuznecov2002@gmail.com"}
@@ -32,7 +32,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -118,7 +117,7 @@ ssllib = ["py.typed"]
 # Black configuration
 [tool.black]
 line-length = 100
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311"]
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -190,7 +189,7 @@ exclude_lines = [
 
 # MyPy configuration
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -229,7 +228,7 @@ max-line-length = 100
 # Ruff configuration (alternative to flake8 + isort + more)
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py39"
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
