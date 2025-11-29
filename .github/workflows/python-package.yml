@@ -42,9 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/ssllib
     steps:
       - name: Download distributions
         uses: actions/download-artifact@v4
@@ -63,9 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-    environment:
-      name: pypi
-      url: https://pypi.org/p/ssllib
     steps:
       - name: Download distributions
         uses: actions/download-artifact@v4
