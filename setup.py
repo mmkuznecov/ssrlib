@@ -4,14 +4,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="sslib",
+    name="ssllib",
     version="0.1.0",
     author="Mikhail Kuznetov",
     author_email="mmkuznecov2002@gmail.com",
     description="A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mmkuznecov/sslib",
+    url="https://github.com/mmkuznecov/SSLib",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -35,19 +35,15 @@ setup(
         "numpy>=1.21.0",
         "pandas>=1.3.0",
         "scipy>=1.7.0",
-        
         # Image processing
         "Pillow>=8.3.0",
-        
         # Model loading
         "transformers>=4.20.0",
         "huggingface-hub>=0.16.0",
-        
         # Utilities
         "tqdm>=4.62.0",
         "pyyaml>=5.4.0",
         "requests>=2.28.0",
-        
         # Data handling
         "safetensors>=0.3.0",
     ],

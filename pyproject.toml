@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sslib"
+name = "ssllib"
 version = "0.1.0"
 description = "A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching"
 readme = "README.md"
@@ -99,21 +99,21 @@ optional = [
 
 # All optional dependencies
 all = [
-    "sslib[hf,dev,docs,examples,optional]",
+    "ssllib[hf,dev,docs,examples,optional]",
 ]
 
 [project.urls]
-Homepage = "https://github.com/mmkuznecov/sslib"
-Documentation = "https://github.com/mmkuznecov/sslib#readme"
-Repository = "https://github.com/mmkuznecov/sslib"
-"Bug Tracker" = "https://github.com/mmkuznecov/sslib/issues"
-Changelog = "https://github.com/mmkuznecov/sslib/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/mmkuznecov/SSLib"
+Documentation = "https://github.com/mmkuznecov/SSLib#readme"
+Repository = "https://github.com/mmkuznecov/SSLib"
+"Bug Tracker" = "https://github.com/mmkuznecov/SSLib/issues"
+Changelog = "https://github.com/mmkuznecov/SSLib/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["sslib"]
+packages = ["ssllib"]
 
 [tool.setuptools.package-data]
-sslib = ["py.typed"]
+ssllib = ["py.typed"]
 
 # Black configuration
 [tool.black]
@@ -156,7 +156,7 @@ addopts = [
     "-v",
     "--strict-markers",
     "--tb=short",
-    "--cov=sslib",
+    "--cov=ssllib",
     "--cov-report=term-missing",
     "--cov-report=html",
 ]
@@ -169,7 +169,7 @@ markers = [
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["sslib"]
+source = ["ssllib"]
 omit = [
     "*/tests/*",
     "*/test_*.py",
@@ -249,4 +249,4 @@ ignore = [
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 
 [tool.ruff.isort]
-known-first-party = ["sslib"]
+known-first-party = ["ssllib"]

@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor, ZCAProcessor
+from ssllib import Pipeline, Config
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssllib.processing import CovarianceProcessor, ZCAProcessor
 
 
 def basic_single_pipeline():
@@ -48,12 +48,8 @@ def multi_component_pipeline():
             (
                 "datasets",
                 [
-                    SynthTestDataset(
-                        tensors_num=20, tensor_shape=(3, 224, 224), seed=1
-                    ),
-                    SynthTestDataset(
-                        tensors_num=20, tensor_shape=(3, 224, 224), seed=2
-                    ),
+                    SynthTestDataset(tensors_num=20, tensor_shape=(3, 224, 224), seed=1),
+                    SynthTestDataset(tensors_num=20, tensor_shape=(3, 224, 224), seed=2),
                 ],
             ),
             (

@@ -43,14 +43,14 @@
 Install SSLib using pip:
 
 ```bash
-pip install sslib
+pip install ssllib
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/mmkuznecov/sslib.git
-cd sslib
+git clone https://github.com/mmkuznecov/ssllib.git
+cd ssllib
 pip install -e .
 ```
 
@@ -92,11 +92,11 @@ pip install -r requirements-dev.txt
 Test your installation:
 
 ```python
-import sslib
-from sslib.datasets import list_datasets
-from sslib.embedders import list_embedders
+import ssllib
+from ssllib.datasets import list_datasets
+from ssllib.embedders import list_embedders
 
-print(f"SSLib version: {sslib.__version__}")
+print(f"SSLib version: {ssllib.__version__}")
 print(f"Available datasets: {len(list_datasets())}")
 print(f"Available embedders: {len(list_embedders())}")
 ```
@@ -129,10 +129,10 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 After installation, try this minimal example:
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor
+from ssllib import Pipeline
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder
+from ssllib.processing import CovarianceProcessor
 
 # Create a simple pipeline
 pipeline = Pipeline([
@@ -175,7 +175,7 @@ Solution: Check internet connection and try manual download. For CelebA:
 
 Solution: Reinstall in editable mode:
 ```bash
-pip uninstall sslib
+pip uninstall ssllib
 pip install -e .
 ```
 
@@ -256,10 +256,10 @@ The `Pipeline` class orchestrates the entire workflow: datasets → embedders �
 - Timing and metadata tracking
 
 ```python
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor
+from ssllib import Pipeline, Config
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder
+from ssllib.processing import CovarianceProcessor
 
 pipeline = Pipeline([
     ('dataset', SynthTestDataset(tensors_num=100)),
@@ -275,7 +275,7 @@ results = pipeline.execute()
 Manages configuration with dot-notation access and file loading.
 
 ```python
-from sslib import Config
+from ssllib import Config
 
 # From dictionary
 config = Config({
@@ -401,7 +401,7 @@ __all__ = [
 ### Discovery API
 
 ```python
-from sslib.datasets import (
+from ssllib.datasets import (
     list_datasets,
     get_dataset_info,
     print_available_datasets,
@@ -440,7 +440,7 @@ dataset = create_dataset('CelebADataset', split='train')
 
 #### Step 1: Create Dataset Class
 
-Create a new file in `sslib/datasets/` (e.g., `my_dataset.py`):
+Create a new file in `ssllib/datasets/` (e.g., `my_dataset.py`):
 
 ```python
 from .base import BaseDataset
@@ -497,14 +497,14 @@ class MyDataset(BaseDataset):
 The dataset is **automatically discovered** and available:
 
 ```python
-from sslib.datasets import MyDataset  # Auto-imported!
+from ssllib.datasets import MyDataset  # Auto-imported!
 
 # Or create by name
-from sslib.datasets import create_dataset
+from ssllib.datasets import create_dataset
 dataset = create_dataset('MyDataset', split='train')
 
 # Check it's registered
-from sslib.datasets import list_datasets
+from ssllib.datasets import list_datasets
 print('MyDataset' in list_datasets())  # True
 ```
 
@@ -512,7 +512,7 @@ print('MyDataset' in list_datasets())  # True
 
 #### Step 1: Create Embedder Class
 
-Create file in `sslib/embedders/cv/` (or `nlp/`, `audio/`):
+Create file in `ssllib/embedders/cv/` (or `nlp/`, `audio/`):
 
 ```python
 from ..base import BaseEmbedder
@@ -586,14 +586,14 @@ class MyEmbedder(BaseEmbedder):
 #### Step 2: Automatically Available!
 
 ```python
-from sslib.embedders.cv import MyEmbedder  # Auto-imported!
+from ssllib.embedders.cv import MyEmbedder  # Auto-imported!
 
 # Or by name
-from sslib.embedders import create_embedder
+from ssllib.embedders import create_embedder
 embedder = create_embedder('MyEmbedder', model_name='my_model_large')
 
 # List all vision embedders
-from sslib.embedders import get_vision_embedders
+from ssllib.embedders import get_vision_embedders
 print(get_vision_embedders())  # Includes 'MyEmbedder'
 ```
 
@@ -626,7 +626,7 @@ class MyProcessor(BaseProcessor):
         return result
 ```
 
-Then import in `sslib/processing/__init__.py`:
+Then import in `ssllib/processing/__init__.py`:
 
 ```python
 from .my_processor import MyProcessor
@@ -641,10 +641,10 @@ __all__ = [..., "MyProcessor"]
 ### Basic Single Pipeline
 
 ```python
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor
+from ssllib import Pipeline, Config
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder
+from ssllib.processing import CovarianceProcessor
 
 # Create pipeline
 pipeline = Pipeline([
@@ -669,10 +669,10 @@ print(f"Covariance shape: {covariance.shape}")
 Compute **all combinations** of datasets × embedders × processors:
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor, ZCAProcessor
+from ssllib import Pipeline
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssllib.processing import CovarianceProcessor, ZCAProcessor
 
 pipeline = Pipeline([
     ('datasets', [
@@ -704,10 +704,10 @@ zca = results.get_processed(dataset_key, 'DINOv2_dinov2_vitb14', 'ZCA')
 ### Configuration-Driven Pipeline
 
 ```python
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor, ZCAProcessor
+from ssllib import Pipeline, Config
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssllib.processing import CovarianceProcessor, ZCAProcessor
 
 # Load configuration
 config = Config.from_file('config.yaml')
@@ -744,10 +744,10 @@ results = pipeline.execute(config_override={'batch_size': 32})
 ### Real Dataset Example
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import CelebADataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor, EffectiveRankProcessor
+from ssllib import Pipeline
+from ssllib.datasets import CelebADataset
+from ssllib.embedders.cv import DINOv2Embedder
+from ssllib.processing import CovarianceProcessor, EffectiveRankProcessor
 
 # Create pipeline with CelebA
 pipeline = Pipeline([
@@ -781,10 +781,10 @@ SSLib includes a built-in caching system to avoid recomputing expensive embeddin
 ### Basic Caching
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor
+from ssllib import Pipeline
+from ssllib.datasets import SynthTestDataset
+from ssllib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssllib.processing import CovarianceProcessor
 
 pipeline = Pipeline([
     ('datasets', [
@@ -987,6 +987,6 @@ If you use SSLib in your research, please cite:
   author = {Mikhail Kuznetov},
   title = {SSLib: A Modular Framework for Self-Supervised Learning},
   year = {2024},
-  url = {https://github.com/mmkuznecov/sslib}
+  url = {https://github.com/mmkuznecov/ssllib}
 }
 ```
