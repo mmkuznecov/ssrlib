@@ -218,3 +218,6 @@ __marimo__/
 data/
 temp/
 cache/
+.pyscn/
+
+uv.lock

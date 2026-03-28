@@ -1,9 +1,9 @@
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor, ZCAProcessor
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssrlib.processing import CovarianceProcessor, ZCAProcessor
 
 
-from sslib import Pipeline
+from ssrlib import Pipeline
 
 
 def example_with_storage():
@@ -15,12 +15,8 @@ def example_with_storage():
             (
                 "datasets",
                 [
-                    SynthTestDataset(
-                        tensors_num=50, tensor_shape=(3, 224, 224), seed=1
-                    ),
-                    SynthTestDataset(
-                        tensors_num=30, tensor_shape=(3, 224, 224), seed=2
-                    ),
+                    SynthTestDataset(tensors_num=50, tensor_shape=(3, 224, 224), seed=1),
+                    SynthTestDataset(tensors_num=30, tensor_shape=(3, 224, 224), seed=2),
                 ],
             ),
             (
@@ -57,9 +53,7 @@ def example_with_storage():
     print(f"Timing comparison:")
     print(f"  First run: {results1.timing['total_time']:.2f}s")
     print(f"  Second run: {results2.timing['total_time']:.2f}s")
-    print(
-        f"  Speedup: {results1.timing['total_time']/results2.timing['total_time']:.1f}x"
-    )
+    print(f"  Speedup: {results1.timing['total_time']/results2.timing['total_time']:.1f}x")
 
     print("\n=== Force recompute ===")
     # Third execution - force recompute

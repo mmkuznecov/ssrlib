@@ -1,0 +1,119 @@
+[project]
+name = "ssrlib"
+version = "0.1.0"
+description = "A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching"
+authors = [
+    {name = "Mikhail Kuznetov", email = "mmkuznecov2002@gmail.com"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    # Core dependencies
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "scipy>=1.7.0",
+    
+    # Image processing
+    "Pillow>=8.3.0",
+    
+    # Model loading
+    "transformers>=4.20.0",
+    "huggingface-hub>=0.16.0",
+    
+    # Utilities
+    "tqdm>=4.62.0",
+    "pyyaml>=5.4.0",
+    "requests>=2.28.0",
+    
+    # Data handling
+    "safetensors>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=3.0",
+    "black>=22.0",
+    "isort>=5.10",
+    "pylint>=2.15",
+    "mypy>=1.0",
+    "sphinx>=5.0",
+    "sphinx-rtd-theme>=1.0",
+]
+
+examples = [
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "jupyter>=1.0.0",
+    "ipywidgets>=8.0.0",
+]
+
+all = [
+    # Optional advanced features
+    "scikit-learn>=1.0.0",
+    "sentencepiece>=0.1.96",
+]
+
+[project.urls]
+Homepage = "https://github.com/mmkuznecov/ssrlib"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ssrlib"]
+
+# Tool configurations for development
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | tests
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

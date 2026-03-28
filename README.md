@@ -1,4 +1,4 @@
-# SSLib Framework Documentation
+# ssrlib Framework Documentation
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@
 
 ## Overview
 
-**SSLib** (Self-Supervised Learning Library) is a modular Python framework for self-supervised representation learning. It provides a **scikit-learn-inspired pipeline architecture** with automatic component discovery, intelligent caching, and extensible base classes.
+**ssrlib** (Self-Supervised Learning Library) is a modular Python framework for self-supervised representation learning. It provides a **scikit-learn-inspired pipeline architecture** with automatic component discovery, intelligent caching, and extensible base classes.
 
 ### Key Features
 
@@ -40,17 +40,17 @@
 
 ### Basic Installation
 
-Install SSLib using pip:
+Install ssrlib using pip:
 
 ```bash
-pip install sslib
+pip install ssrlib
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/mmkuznecov/sslib.git
-cd sslib
+git clone https://github.com/mmkuznecov/ssrlib.git
+cd ssrlib
 pip install -e .
 ```
 
@@ -92,18 +92,18 @@ pip install -r requirements-dev.txt
 Test your installation:
 
 ```python
-import sslib
-from sslib.datasets import list_datasets
-from sslib.embedders import list_embedders
+import ssrlib
+from ssrlib.datasets import list_datasets
+from ssrlib.embedders import list_embedders
 
-print(f"SSLib version: {sslib.__version__}")
+print(f"ssrlib version: {ssrlib.__version__}")
 print(f"Available datasets: {len(list_datasets())}")
 print(f"Available embedders: {len(list_embedders())}")
 ```
 
 ### GPU Support
 
-SSLib automatically detects and uses CUDA if available. To verify GPU support:
+ssrlib automatically detects and uses CUDA if available. To verify GPU support:
 
 ```python
 import torch
@@ -129,10 +129,10 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 After installation, try this minimal example:
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor
+from ssrlib import Pipeline
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder
+from ssrlib.processing import CovarianceProcessor
 
 # Create a simple pipeline
 pipeline = Pipeline([
@@ -175,7 +175,7 @@ Solution: Check internet connection and try manual download. For CelebA:
 
 Solution: Reinstall in editable mode:
 ```bash
-pip uninstall sslib
+pip uninstall ssrlib
 pip install -e .
 ```
 
@@ -184,47 +184,61 @@ pip install -e .
 ## Framework Architecture
 
 ```
-SSLib/
+ssrlib/
 ├── core/                    # Core pipeline and configuration
-│   ├── pipeline.py         # Pipeline orchestration
-│   ├── config.py           # Configuration management
+│   ├── pipeline.py          # Pipeline orchestration
+│   ├── config.py            # Configuration management
+│   └── registry.py          # Generic discovery/registry
 │
-├── datasets/               # Dataset implementations
-│   ├── __init__.py         # Auto-discovery registry
-│   ├── base.py             # BaseDataset
-│   ├── celeba.py           # CelebA dataset
-│   ├── imagenet100.py      # ImageNet-100
-│   └── synthtest_dataset.py # Synthetic test data
+├── datasets/                # Dataset implementations
+│   ├── __init__.py          # Auto-discovery registry
+│   ├── base.py              # BaseDataset
+│   ├── celeba.py            # CelebA dataset
+│   ├── cifar10.py           # CIFAR-10
+│   ├── food101.py           # Food-101
+│   ├── imagenet100.py       # ImageNet-100
+│   ├── synthtest_dataset.py # Synthetic test data
+│   ├── hf_mixin.py          # HuggingFace helpers
+│   └── kaggle_mixin.py      # Kaggle helpers
 │
-├── embedders/              # Embedding models
-│   ├── __init__.py         # Auto-discovery registry
-│   ├── base.py             # BaseEmbedder
-│   ├── cv/                 # Computer vision embedders
-│   │   ├── dinov2.py       # DINOv2 models
-│   │   ├── dino.py         # DINO (original)
-│   │   ├── clip.py         # CLIP models
-│   │   └── vicreg.py       # VICReg
-│   └── nlp/                # NLP embedders
-│       ├── bert.py         # BERT variants
-│       ├── e5.py           # E5 multilingual
-│       └── modernbert.py   # ModernBERT
+├── embedders/               # Embedding models
+│   ├── __init__.py          # Auto-discovery registry
+│   ├── base.py              # BaseEmbedder
+│   ├── cv/                  # Computer vision embedders
+│   │   ├── __init__.py
+│   │   ├── dinov2.py        # DINOv2 models
+│   │   ├── dino.py          # DINO (original)
+│   │   ├── clip.py          # CLIP models
+│   │   └── vicreg.py        # VICReg
+│   └── nlp/                 # NLP embedders
+│       ├── __init__.py
+│       ├── bert.py          # BERT variants
+│       ├── bert_base.py     # Base class for BERT-like models
+│       ├── e5.py            # E5 multilingual
+│       └── modernbert.py    # ModernBERT
 │
-├── processing/             # Post-processing & analysis
-│   ├── base.py             # BaseProcessor
-│   ├── covariance.py       # Covariance computation
-│   ├── zca.py              # ZCA whitening
-│   ├── effective_rank.py  # Effective rank metric
-│   └── leverage_scores.py # Leverage score analysis
+├── processing/              # Post-processing & analysis
+│   ├── __init__.py          # Auto-discovery registry for processors
+│   ├── base.py              # BaseProcessor
+│   ├── covariance.py        # Covariance computation
+│   ├── zca.py               # ZCA whitening
+│   ├── effective_rank.py    # Effective rank metric
+│   ├── leverage_scores.py   # Row leverage scores
+│   ├── stable_rank.py       # Stable rank metric
+│   ├── spectrum.py          # Covariance spectrum
+│   └── pairwise_stats.py    # Pairwise distance statistics
 │
-├── losses/                 # Loss functions (for training)
-│   ├── base.py             # BaseLoss
-│   ├── infonce_loss.py     # InfoNCE (SimCLR)
-│   ├── contrastive_loss.py # Standard contrastive
-│   ├── triplet_loss.py     # Triplet loss
-│   └── deepinfomax_loss.py # Deep InfoMax
+├── losses/                  # Loss functions (for training)
+│   ├── __init__.py
+│   ├── base.py              # BaseLoss
+│   ├── infonce_loss.py      # InfoNCE (SimCLR)
+│   ├── contrastive_loss.py  # Standard contrastive
+│   ├── triplet_loss.py      # Triplet loss
+│   └── deepinfomax_loss.py  # Deep InfoMax
 │
-└── storage/                # Caching & persistence
-    └── tensor_storage.py   # TensorStorage for embeddings
+└── storage/                 # Caching & persistence
+    ├── __init__.py
+    └── tensor_storage.py    # TensorStorage for embeddings
 ```
 
 ---
@@ -242,10 +256,10 @@ The `Pipeline` class orchestrates the entire workflow: datasets → embedders �
 - Timing and metadata tracking
 
 ```python
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor
+from ssrlib import Pipeline, Config
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder
+from ssrlib.processing import CovarianceProcessor
 
 pipeline = Pipeline([
     ('dataset', SynthTestDataset(tensors_num=100)),
@@ -261,7 +275,7 @@ results = pipeline.execute()
 Manages configuration with dot-notation access and file loading.
 
 ```python
-from sslib import Config
+from ssrlib import Config
 
 # From dictionary
 config = Config({
@@ -303,7 +317,7 @@ print(results.list_dataset_keys())
 
 ## Module Discovery System
 
-SSLib uses **automatic component discovery** inspired by plugin architectures. At import time, the framework scans module directories and registers all valid components.
+ssrlib uses **automatic component discovery** inspired by plugin architectures. At import time, the framework scans module directories and registers all valid components.
 
 ### How Discovery Works
 
@@ -387,7 +401,7 @@ __all__ = [
 ### Discovery API
 
 ```python
-from sslib.datasets import (
+from ssrlib.datasets import (
     list_datasets,
     get_dataset_info,
     print_available_datasets,
@@ -406,7 +420,7 @@ info = get_dataset_info('CelebADataset')
 # Returns: {
 #   'name': 'CelebADataset',
 #   'class': 'CelebADataset',
-#   'description': 'CelebA Dataset for SSLib framework.',
+#   'description': 'CelebA Dataset for ssrlib framework.',
 #   'modality': 'vision',
 #   'properties': {'num_attributes': 40, ...}
 # }
@@ -426,7 +440,7 @@ dataset = create_dataset('CelebADataset', split='train')
 
 #### Step 1: Create Dataset Class
 
-Create a new file in `sslib/datasets/` (e.g., `my_dataset.py`):
+Create a new file in `ssrlib/datasets/` (e.g., `my_dataset.py`):
 
 ```python
 from .base import BaseDataset
@@ -483,14 +497,14 @@ class MyDataset(BaseDataset):
 The dataset is **automatically discovered** and available:
 
 ```python
-from sslib.datasets import MyDataset  # Auto-imported!
+from ssrlib.datasets import MyDataset  # Auto-imported!
 
 # Or create by name
-from sslib.datasets import create_dataset
+from ssrlib.datasets import create_dataset
 dataset = create_dataset('MyDataset', split='train')
 
 # Check it's registered
-from sslib.datasets import list_datasets
+from ssrlib.datasets import list_datasets
 print('MyDataset' in list_datasets())  # True
 ```
 
@@ -498,7 +512,7 @@ print('MyDataset' in list_datasets())  # True
 
 #### Step 1: Create Embedder Class
 
-Create file in `sslib/embedders/cv/` (or `nlp/`, `audio/`):
+Create file in `ssrlib/embedders/cv/` (or `nlp/`, `audio/`):
 
 ```python
 from ..base import BaseEmbedder
@@ -572,14 +586,14 @@ class MyEmbedder(BaseEmbedder):
 #### Step 2: Automatically Available!
 
 ```python
-from sslib.embedders.cv import MyEmbedder  # Auto-imported!
+from ssrlib.embedders.cv import MyEmbedder  # Auto-imported!
 
 # Or by name
-from sslib.embedders import create_embedder
+from ssrlib.embedders import create_embedder
 embedder = create_embedder('MyEmbedder', model_name='my_model_large')
 
 # List all vision embedders
-from sslib.embedders import get_vision_embedders
+from ssrlib.embedders import get_vision_embedders
 print(get_vision_embedders())  # Includes 'MyEmbedder'
 ```
 
@@ -612,7 +626,7 @@ class MyProcessor(BaseProcessor):
         return result
 ```
 
-Then import in `sslib/processing/__init__.py`:
+Then import in `ssrlib/processing/__init__.py`:
 
 ```python
 from .my_processor import MyProcessor
@@ -627,10 +641,10 @@ __all__ = [..., "MyProcessor"]
 ### Basic Single Pipeline
 
 ```python
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor
+from ssrlib import Pipeline, Config
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder
+from ssrlib.processing import CovarianceProcessor
 
 # Create pipeline
 pipeline = Pipeline([
@@ -655,10 +669,10 @@ print(f"Covariance shape: {covariance.shape}")
 Compute **all combinations** of datasets × embedders × processors:
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor, ZCAProcessor
+from ssrlib import Pipeline
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssrlib.processing import CovarianceProcessor, ZCAProcessor
 
 pipeline = Pipeline([
     ('datasets', [
@@ -690,10 +704,10 @@ zca = results.get_processed(dataset_key, 'DINOv2_dinov2_vitb14', 'ZCA')
 ### Configuration-Driven Pipeline
 
 ```python
-from sslib import Pipeline, Config
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor, ZCAProcessor
+from ssrlib import Pipeline, Config
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssrlib.processing import CovarianceProcessor, ZCAProcessor
 
 # Load configuration
 config = Config.from_file('config.yaml')
@@ -730,10 +744,10 @@ results = pipeline.execute(config_override={'batch_size': 32})
 ### Real Dataset Example
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import CelebADataset
-from sslib.embedders.cv import DINOv2Embedder
-from sslib.processing import CovarianceProcessor, EffectiveRankProcessor
+from ssrlib import Pipeline
+from ssrlib.datasets import CelebADataset
+from ssrlib.embedders.cv import DINOv2Embedder
+from ssrlib.processing import CovarianceProcessor, EffectiveRankProcessor
 
 # Create pipeline with CelebA
 pipeline = Pipeline([
@@ -762,15 +776,15 @@ print(f"Effective rank: {eff_rank}")
 
 ## Storage & Caching
 
-SSLib includes a built-in caching system to avoid recomputing expensive embeddings.
+ssrlib includes a built-in caching system to avoid recomputing expensive embeddings.
 
 ### Basic Caching
 
 ```python
-from sslib import Pipeline
-from sslib.datasets import SynthTestDataset
-from sslib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from sslib.processing import CovarianceProcessor
+from ssrlib import Pipeline
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssrlib.processing import CovarianceProcessor
 
 pipeline = Pipeline([
     ('datasets', [
@@ -943,7 +957,7 @@ with open(f"./experiments/{experiment_name}/results.json", 'w') as f:
 
 ## Summary
 
-**SSLib** provides a clean, modular framework for self-supervised learning experiments with:
+**ssrlib** provides a clean, modular framework for self-supervised learning experiments with:
 
 - **Automatic discovery** - Add a class file, it's instantly available
 - **Metadata-driven** - Components self-describe their capabilities
@@ -966,13 +980,13 @@ MIT License - see LICENSE file for details
 
 ## Citation
 
-If you use SSLib in your research, please cite:
+If you use ssrlib in your research, please cite:
 
 ```bibtex
-@software{sslib2024,
+@software{ssrlib2024,
   author = {Mikhail Kuznetov},
-  title = {SSLib: A Modular Framework for Self-Supervised Learning},
+  title = {ssrlib: A Modular Framework for Self-Supervised Learning},
   year = {2024},
-  url = {https://github.com/mmkuznecov/sslib}
+  url = {https://github.com/mmkuznecov/ssrlib}
 }
 ```
