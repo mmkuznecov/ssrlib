@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="ssllib",
+    name="ssrlib",
     version="0.1.0",
     author="Mikhail Kuznetov",
     author_email="mmkuznecov2002@gmail.com",

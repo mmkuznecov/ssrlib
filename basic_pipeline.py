@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from ssllib import Pipeline, Config
-from ssllib.datasets import SynthTestDataset
-from ssllib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from ssllib.processing import CovarianceProcessor, ZCAProcessor
+from ssrlib import Pipeline, Config
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssrlib.processing import CovarianceProcessor, ZCAProcessor
 
 
 def basic_single_pipeline():

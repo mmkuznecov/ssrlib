@@ -1,9 +1,9 @@
-from ssllib.datasets import SynthTestDataset
-from ssllib.embedders.cv import DINOv2Embedder, CLIPEmbedder
-from ssllib.processing import CovarianceProcessor, ZCAProcessor
+from ssrlib.datasets import SynthTestDataset
+from ssrlib.embedders.cv import DINOv2Embedder, CLIPEmbedder
+from ssrlib.processing import CovarianceProcessor, ZCAProcessor
 
 
-from ssllib import Pipeline
+from ssrlib import Pipeline
 
 
 def example_with_storage():
