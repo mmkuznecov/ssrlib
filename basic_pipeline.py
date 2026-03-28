@@ -183,7 +183,7 @@ def analyze_results():
 def main():
     """Run all examples."""
 
-    print("SSLib Framework - Usage Examples")
+    print("ssrlib Framework - Usage Examples")
     print("================================")
 
     try:

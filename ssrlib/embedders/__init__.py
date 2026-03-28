@@ -1,4 +1,4 @@
-"""Embedder implementations for SSLib with automatic discovery."""
+"""Embedder implementations for ssrlib with automatic discovery."""
 
 import logging
 from pathlib import Path

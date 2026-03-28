@@ -1,4 +1,4 @@
-"""Processing for SSLib with automatic discovery."""
+"""Processing for ssrlib with automatic discovery."""
 
 import logging
 from pathlib import Path

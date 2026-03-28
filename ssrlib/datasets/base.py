@@ -4,7 +4,7 @@ import torch
 
 
 class BaseDataset(ABC):
-    """Base class for all datasets in SSLib with self-describing metadata."""
+    """Base class for all datasets in ssrlib with self-describing metadata."""
 
     # Class-level metadata - subclasses should override these
     _dataset_category: ClassVar[str] = "general"

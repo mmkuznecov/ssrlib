@@ -1,4 +1,4 @@
-"""Base embedder implementation for SSLib."""
+"""Base embedder implementation for ssrlib."""
 
 import torch
 import torch.nn as nn
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEmbedder(ABC):
-    """Base class for all embedders in SSLib with self-describing metadata."""
+    """Base class for all embedders in ssrlib with self-describing metadata."""
 
     # Class-level metadata - subclasses should override these
     _embedder_category: ClassVar[str] = "general"

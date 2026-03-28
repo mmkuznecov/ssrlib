@@ -1,4 +1,4 @@
-"""Loss functions for SSLib with automatic discovery."""
+"""Loss functions for ssrlib with automatic discovery."""
 
 import logging
 from pathlib import Path

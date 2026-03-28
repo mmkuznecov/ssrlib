@@ -1,4 +1,4 @@
-"""Datasets for SSLib with automatic discovery."""
+"""Datasets for ssrlib with automatic discovery."""
 
 import logging
 from pathlib import Path

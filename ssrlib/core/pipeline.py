@@ -53,7 +53,7 @@ class PipelineResults:
 
 
 class Pipeline:
-    """Main pipeline class for orchestrating SSLib components with storage support."""
+    """Main pipeline class for orchestrating ssrlib components with storage support."""
 
     def __init__(self, components: List[Tuple[str, Any]], config: Config = None):
         """Initialize pipeline.

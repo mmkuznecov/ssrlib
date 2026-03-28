@@ -4,7 +4,7 @@ import json
 
 
 class Config:
-    """Configuration management class for SSLib."""
+    """Configuration management class for ssrlib."""
 
     def __init__(self, config_dict: Dict = None):
         """Initialize configuration.

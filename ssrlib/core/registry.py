@@ -1,4 +1,4 @@
-"""Generic registry system for SSLib components."""
+"""Generic registry system for ssrlib components."""
 
 import importlib
 import inspect

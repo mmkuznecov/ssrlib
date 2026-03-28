@@ -11,7 +11,7 @@ setup(
     description="A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mmkuznecov/SSLib",
+    url="https://github.com/mmkuznecov/ssrlib",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",

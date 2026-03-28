@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class CelebADataset(KaggleDatasetMixin, BaseDataset):
-    """CelebA Dataset for SSLib framework."""
+    """CelebA Dataset for ssrlib framework."""
 
     # Class-level metadata
     _dataset_category: ClassVar[str] = "vision"

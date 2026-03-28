@@ -4,7 +4,7 @@ import numpy as np
 
 
 class BaseProcessor(ABC):
-    """Base class for all processors in SSLib."""
+    """Base class for all processors in ssrlib."""
 
     def __init__(self, name: str, **kwargs):
         """Initialize processor.

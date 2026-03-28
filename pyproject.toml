@@ -1,5 +1,5 @@
 [project]
-name = "sslib"
+name = "ssrlib"
 version = "0.1.0"
 description = "A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching"
 authors = [
@@ -72,14 +72,14 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mmkuznecov/sslib"
+Homepage = "https://github.com/mmkuznecov/ssrlib"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["sslib"]
+packages = ["ssrlib"]
 
 # Tool configurations for development
 [tool.black]

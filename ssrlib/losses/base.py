@@ -16,7 +16,7 @@ class DistanceMetric(Enum):
 
 
 class BaseLoss(nn.Module, ABC):
-    """Base class for SSLib loss functions with common functionality."""
+    """Base class for ssrlib loss functions with common functionality."""
 
     def __init__(
         self,

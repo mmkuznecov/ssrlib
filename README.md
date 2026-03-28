@@ -1,4 +1,4 @@
-# SSLib Framework Documentation
+# ssrlib Framework Documentation
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@
 
 ## Overview
 
-**SSLib** (Self-Supervised Learning Library) is a modular Python framework for self-supervised representation learning. It provides a **scikit-learn-inspired pipeline architecture** with automatic component discovery, intelligent caching, and extensible base classes.
+**ssrlib** (Self-Supervised Learning Library) is a modular Python framework for self-supervised representation learning. It provides a **scikit-learn-inspired pipeline architecture** with automatic component discovery, intelligent caching, and extensible base classes.
 
 ### Key Features
 
@@ -40,7 +40,7 @@
 
 ### Basic Installation
 
-Install SSLib using pip:
+Install ssrlib using pip:
 
 ```bash
 pip install ssrlib
@@ -96,14 +96,14 @@ import ssrlib
 from ssrlib.datasets import list_datasets
 from ssrlib.embedders import list_embedders
 
-print(f"SSLib version: {ssrlib.__version__}")
+print(f"ssrlib version: {ssrlib.__version__}")
 print(f"Available datasets: {len(list_datasets())}")
 print(f"Available embedders: {len(list_embedders())}")
 ```
 
 ### GPU Support
 
-SSLib automatically detects and uses CUDA if available. To verify GPU support:
+ssrlib automatically detects and uses CUDA if available. To verify GPU support:
 
 ```python
 import torch
@@ -184,7 +184,7 @@ pip install -e .
 ## Framework Architecture
 
 ```
-SSLib/
+ssrlib/
 ├── core/                    # Core pipeline and configuration
 │   ├── pipeline.py          # Pipeline orchestration
 │   ├── config.py            # Configuration management
@@ -317,7 +317,7 @@ print(results.list_dataset_keys())
 
 ## Module Discovery System
 
-SSLib uses **automatic component discovery** inspired by plugin architectures. At import time, the framework scans module directories and registers all valid components.
+ssrlib uses **automatic component discovery** inspired by plugin architectures. At import time, the framework scans module directories and registers all valid components.
 
 ### How Discovery Works
 
@@ -420,7 +420,7 @@ info = get_dataset_info('CelebADataset')
 # Returns: {
 #   'name': 'CelebADataset',
 #   'class': 'CelebADataset',
-#   'description': 'CelebA Dataset for SSLib framework.',
+#   'description': 'CelebA Dataset for ssrlib framework.',
 #   'modality': 'vision',
 #   'properties': {'num_attributes': 40, ...}
 # }
@@ -776,7 +776,7 @@ print(f"Effective rank: {eff_rank}")
 
 ## Storage & Caching
 
-SSLib includes a built-in caching system to avoid recomputing expensive embeddings.
+ssrlib includes a built-in caching system to avoid recomputing expensive embeddings.
 
 ### Basic Caching
 
@@ -957,7 +957,7 @@ with open(f"./experiments/{experiment_name}/results.json", 'w') as f:
 
 ## Summary
 
-**SSLib** provides a clean, modular framework for self-supervised learning experiments with:
+**ssrlib** provides a clean, modular framework for self-supervised learning experiments with:
 
 - **Automatic discovery** - Add a class file, it's instantly available
 - **Metadata-driven** - Components self-describe their capabilities
@@ -980,12 +980,12 @@ MIT License - see LICENSE file for details
 
 ## Citation
 
-If you use SSLib in your research, please cite:
+If you use ssrlib in your research, please cite:
 
 ```bibtex
-@software{sslib2024,
+@software{ssrlib2024,
   author = {Mikhail Kuznetov},
-  title = {SSLib: A Modular Framework for Self-Supervised Learning},
+  title = {ssrlib: A Modular Framework for Self-Supervised Learning},
   year = {2024},
   url = {https://github.com/mmkuznecov/ssrlib}
 }

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImageNet100Dataset(KaggleDatasetMixin, BaseDataset):
-    """ImageNet100 Dataset for SSLib framework."""
+    """ImageNet100 Dataset for ssrlib framework."""
 
     # Class-level metadata
     _dataset_category: ClassVar[str] = "vision"
