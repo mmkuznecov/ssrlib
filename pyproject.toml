@@ -1,6 +1,6 @@
 [project]
 name = "ssrlib"
-version = "0.1.0"
+version = "0.1.1"
 description = "A modular Python framework for Self-Supervised Learning with automatic component discovery and intelligent caching"
 authors = [
     {name = "Mikhail Kuznetov", email = "mmkuznecov2002@gmail.com"},
