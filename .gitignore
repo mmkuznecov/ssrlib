@@ -220,4 +220,4 @@ temp/
 cache/
 .pyscn/
 
-uv.lock/
+uv.lock
