@@ -18,7 +18,7 @@
 
 ## Overview
 
-**ssrlib** (Self-Supervised Learning Library) is a modular Python framework for self-supervised representation learning. It provides a **scikit-learn-inspired pipeline architecture** with automatic component discovery, intelligent caching, and extensible base classes.
+**ssrlib** (Self-Supervised Representation Learning Library) is a modular Python framework for self-supervised representation learning. It provides a **scikit-learn-inspired pipeline architecture** with automatic component discovery, intelligent caching, and extensible base classes.
 
 ### Key Features
 
@@ -955,25 +955,6 @@ with open(f"./experiments/{experiment_name}/results.json", 'w') as f:
 
 ---
 
-## Summary
-
-**ssrlib** provides a clean, modular framework for self-supervised learning experiments with:
-
-- **Automatic discovery** - Add a class file, it's instantly available
-- **Metadata-driven** - Components self-describe their capabilities
-- **Pipeline orchestration** - Compose complex workflows easily
-- **Intelligent caching** - Never recompute expensive embeddings
-- **Extensible design** - Simple base classes for new components
-
-### Next Steps
-
-- Add training functionality (TrainingPipeline)
-- Expand embedder collection (audio, multimodal)
-- Add more processors (spectral analysis, representation quality metrics)
-- Develop comprehensive benchmarking suite
-
----
-
 ## License
 
 MIT License - see LICENSE file for details
@@ -983,10 +964,10 @@ MIT License - see LICENSE file for details
 If you use ssrlib in your research, please cite:
 
 ```bibtex
-@software{ssrlib2024,
+@software{ssrlib2026,
   author = {Mikhail Kuznetov},
   title = {ssrlib: A Modular Framework for Self-Supervised Learning},
-  year = {2024},
+  year = {2026},
   url = {https://github.com/mmkuznecov/ssrlib}
 }
 ```
