@@ -1,73 +1,38 @@
-"""ModernBERT embedder implementation."""
+"""ModernBERT text embedder (Warner et al. 2024)."""
 
-from typing import Dict, Any, ClassVar
+from __future__ import annotations
 
-from .bert_base import TransformerEmbedderBase
+from typing import Any, ClassVar, Dict
+
+from .bert import BERTEmbedder
 
 
-class ModernBERTEmbedder(TransformerEmbedderBase):
-    """ModernBERT embedder for natural language processing."""
+class ModernBERTEmbedder(BERTEmbedder):
+    """ModernBERT thin wrapper. Defaults to ``answerdotai/ModernBERT-base``."""
 
-    # Class-level metadata
-    _embedder_category: ClassVar[str] = "nlp"
-    _embedder_modality: ClassVar[str] = "text"
     _embedder_properties: ClassVar[Dict[str, Any]] = {
-        "model_family": "ModernBERT",
-        "source": "Answer.AI",
-        "modernized_architecture": True,
-        "rotary_embeddings": True,
-        "max_sequence_length": 8192,
-        "pooling_strategy": "cls",
+        "framework": "transformers",
+        "ssl_method": "ModernBERT",
     }
 
-    MODEL_FAMILY_NAME: ClassVar[str] = "ModernBERT"
-    DEFAULT_MODEL: ClassVar[str] = "modernbert-base"
-
-    AVAILABLE_MODELS = {
-        "modernbert-base": {
-            "embedding_dim": 768,
-            "hf_name": "answerdotai/ModernBERT-base",
-            "num_layers": 22,
-        },
-        "modernbert-large": {
-            "embedding_dim": 1024,
-            "hf_name": "answerdotai/ModernBERT-large",
-            "num_layers": 28,
-        },
+    AVAILABLE_MODELS: ClassVar[Dict[str, int]] = {
+        "answerdotai/ModernBERT-base": 768,
+        "answerdotai/ModernBERT-large": 1024,
     }
 
     def __init__(
         self,
-        model_name: str = "modernbert-base",
-        pooling: str = "cls",
+        model_name: str = "answerdotai/ModernBERT-base",
+        pooling: str = "mean",
+        max_length: int = 512,
         device: str = "cpu",
         **kwargs,
     ):
-        """Initialize ModernBERT embedder.
-
-        Args:
-            model_name: Name of the ModernBERT model to use
-            pooling: Pooling strategy ('cls' or 'mean')
-            device: Device to run on ('cpu' or 'cuda')
-            **kwargs: Additional arguments
-        """
-        super().__init__(model_name, pooling, device, **kwargs)
-
-    def _get_model_metadata(self) -> Dict[str, Any]:
-        """Get ModernBERT-specific metadata."""
-        return {
-            "model_name": self.model_name,
-            "hf_name": self.hf_name,
-            "embedding_dim": self.embedding_dim,
-            "pooling": self.pooling,
-            "model_family": "ModernBERT",
-            "num_layers": self.AVAILABLE_MODELS[self.model_name]["num_layers"],
-        }
-
-    def _get_default_max_length(self) -> int:
-        """ModernBERT default max length is 512 (same as BERT)."""
-        return 512
-
-    def _clamp_max_length(self, max_length: int) -> int:
-        """ModernBERT supports up to 8192 tokens."""
-        return min(max_length, 8192)
+        super().__init__(
+            model_name=model_name,
+            pooling=pooling,
+            max_length=max_length,
+            device=device,
+            **kwargs,
+        )
+        self.name = f"ModernBERT-{model_name.split('/')[-1]}"

@@ -1,21 +1,26 @@
+"""Stable rank of the data matrix."""
+
+from __future__ import annotations
+
 import numpy as np
-from typing import Dict, Any
+
+from ._spectral import top_singular_value
 from .base import BaseProcessor
 
 
 class StableRankProcessor(BaseProcessor):
-    """
-    Stable rank of the (optionally centered) data matrix X:
-        srank = ||X||_F^2 / ||X||_2^2
-    where ||X||_2 is the top singular value.
+    """Stable rank: ``srank = ||X||_F^2 / ||X||_2^2``.
+
+    The standard definition operates on the raw matrix; centering changes the
+    metric's meaning (with centering it becomes equivalent to NESum on the
+    centered data). Default is therefore ``center=False``.
+
+    Note:
+        Earlier versions of ssrlib defaulted to ``center=True``. If you relied
+        on that behaviour, pass ``StableRankProcessor(center=True)`` explicitly.
     """
 
-    def __init__(self, center: bool = True, epsilon: float = 1e-12, **kwargs):
-        """
-        Args:
-            center: mean-center rows before computing norms (often desirable).
-            epsilon: small floor for top singular value squared.
-        """
+    def __init__(self, center: bool = False, epsilon: float = 1e-12, **kwargs):
         super().__init__("StableRank", **kwargs)
         self.center = bool(center)
         self.epsilon = float(epsilon)
@@ -38,10 +43,8 @@ class StableRankProcessor(BaseProcessor):
             X = X - X.mean(axis=0, keepdims=True)
 
         fro2 = float(np.sum(X * X))
-        # Top singular value via SVD
-        # (full SVD is fine for moderate sizes; replace with randomized SVD if needed)
-        s = np.linalg.svd(X, full_matrices=False, compute_uv=False)
-        s1_sq = float(s[0] ** 2) if s.size > 0 else 0.0
+        s1 = top_singular_value(X, center=False)  # already centered above if requested
+        s1_sq = s1**2
 
         denom = max(s1_sq, self.epsilon)
         srank = fro2 / denom if denom > 0 else 0.0
@@ -53,7 +56,7 @@ class StableRankProcessor(BaseProcessor):
                 "n_features": int(embeddings.shape[1]),
                 "frobenius_sq": fro2,
                 "top_singular_sq": s1_sq,
-                "stable_rank": srank,
+                "value": float(srank),
             }
         )
         return np.array([srank], dtype=np.float64)

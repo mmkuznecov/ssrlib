@@ -1,77 +1,51 @@
-from typing import Dict, Any
-import yaml
+"""Configuration management."""
+
+from __future__ import annotations
+
 import json
+from typing import Any, Dict
+
+import yaml
 
 
 class Config:
-    """Configuration management class for ssrlib."""
+    """Lightweight dotted-key config wrapper."""
 
-    def __init__(self, config_dict: Dict = None):
-        """Initialize configuration.
-
-        Args:
-            config_dict: Dictionary containing configuration
-        """
-        self._config = config_dict or {}
+    def __init__(self, config_dict: Dict | None = None):
+        self._config: Dict[str, Any] = config_dict or {}
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value.
-
-        Args:
-            key: Configuration key (supports dot notation like 'model.batch_size')
-            default: Default value if key not found
-
-        Returns:
-            Configuration value
-        """
+        """Get a config value, supporting dotted access like 'model.batch_size'."""
         keys = key.split(".")
-        value = self._config
-
+        value: Any = self._config
         for k in keys:
             if isinstance(value, dict) and k in value:
                 value = value[k]
             else:
                 return default
-
         return value
 
     def set(self, key: str, value: Any) -> None:
-        """Set configuration value.
-
-        Args:
-            key: Configuration key (supports dot notation)
-            value: Value to set
-        """
+        """Set a config value, supporting dotted access."""
         keys = key.split(".")
         config = self._config
-
         for k in keys[:-1]:
             if k not in config:
                 config[k] = {}
             config = config[k]
-
         config[keys[-1]] = value
 
     @classmethod
     def from_file(cls, config_path: str) -> "Config":
-        """Load configuration from file.
-
-        Args:
-            config_path: Path to configuration file (.yaml or .json)
-
-        Returns:
-            Config instance
-        """
+        """Load config from a YAML or JSON file."""
         with open(config_path, "r") as f:
-            if config_path.endswith(".yaml") or config_path.endswith(".yml"):
+            if config_path.endswith((".yaml", ".yml")):
                 config_dict = yaml.safe_load(f)
             elif config_path.endswith(".json"):
                 config_dict = json.load(f)
             else:
                 raise ValueError(f"Unsupported config file format: {config_path}")
-
         return cls(config_dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert configuration to dictionary."""
-        return self._config.copy()
+        return dict(self._config)

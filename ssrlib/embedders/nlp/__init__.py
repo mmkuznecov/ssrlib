@@ -1,7 +1,8 @@
-"""Natural language processing embedders."""
+"""NLP text embedders."""
 
 from .bert import BERTEmbedder
-from .modernbert import ModernBERTEmbedder
+from .bert_base import BERTBaseEmbedder
 from .e5 import E5Embedder
+from .modernbert import ModernBERTEmbedder
 
-__all__ = ["BERTEmbedder", "ModernBERTEmbedder", "E5Embedder"]
+__all__ = ["BERTEmbedder", "BERTBaseEmbedder", "E5Embedder", "ModernBERTEmbedder"]

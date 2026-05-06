@@ -1,15 +1,18 @@
+"""Eigenvalue spectrum of the covariance matrix."""
+
+from __future__ import annotations
+
 import numpy as np
-from typing import Dict, Any
+
+from ._spectral import covariance_eigvals
 from .base import BaseProcessor
 
 
 class SpectrumProcessor(BaseProcessor):
-    """
-    Computes the eigenvalue spectrum of the (optionally centered) covariance
-    matrix of embeddings.
+    """Eigenvalue spectrum of the (optionally centered) covariance matrix.
 
-    By default returns raw eigenvalues λ_i sorted in descending order.
-    Optionally can also return normalized spectrum (explained variance ratios).
+    By default returns raw eigenvalues sorted in descending order. Set
+    ``normalize=True`` to return explained-variance ratios instead.
     """
 
     def __init__(
@@ -19,13 +22,6 @@ class SpectrumProcessor(BaseProcessor):
         normalize: bool = False,
         **kwargs,
     ):
-        """
-        Args:
-            center: mean-center before covariance.
-            epsilon: small floor for eigenvalues to avoid numerical issues.
-            normalize: if True, return explained-variance ratios λ_i / sum_j λ_j
-                       instead of raw eigenvalues.
-        """
         super().__init__("Spectrum", **kwargs)
         self.center = bool(center)
         self.epsilon = float(epsilon)
@@ -45,25 +41,15 @@ class SpectrumProcessor(BaseProcessor):
         if embeddings.ndim != 2:
             raise ValueError(f"Expected 2D embeddings, got shape {embeddings.shape}")
 
-        X = embeddings.astype(np.float64, copy=False)
-        if self.center:
-            X = X - X.mean(axis=0, keepdims=True)
+        eig = covariance_eigvals(embeddings, center=self.center)
 
-        # Covariance and eigenvalues
-        C = np.cov(X.T)
-        evals = np.linalg.eigvalsh(C)  # ascending
-        evals = np.maximum(evals, 0.0)
-
-        # Sort descending for convenience
-        evals = evals[::-1]
-
-        trace = float(evals.sum())
-        top = float(evals[0]) if evals.size > 0 else 0.0
+        trace = float(eig.sum())
+        top = float(eig[0]) if eig.size else 0.0
 
         if self.normalize and trace > self.epsilon:
-            spectrum = evals / (trace + self.epsilon)
+            spectrum = eig / (trace + self.epsilon)
         else:
-            spectrum = evals
+            spectrum = eig
 
         self._metadata.update(
             {
@@ -72,8 +58,7 @@ class SpectrumProcessor(BaseProcessor):
                 "n_features": int(embeddings.shape[1]),
                 "trace": trace,
                 "spectral_norm": top,
-                "n_eigenvalues": int(evals.size),
+                "n_eigenvalues": int(eig.size),
             }
         )
-
         return spectrum.astype(np.float64, copy=False)
