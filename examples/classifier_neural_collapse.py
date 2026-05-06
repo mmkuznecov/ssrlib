@@ -1,7 +1,7 @@
 """Train a classifier and watch Neural Collapse emerge during the terminal phase.
 
 Reproduces the qualitative experiment of Papyan, Han, Donoho (2020) — but with
-a tiny model on synthetic data so it runs in ~30 seconds on CPU. The same code
+a tiny model on synthetic data. The same code
 works on real datasets: swap ``make_classification_data`` for any DataLoader
 that yields ``(image_tensor, label)`` pairs.
 

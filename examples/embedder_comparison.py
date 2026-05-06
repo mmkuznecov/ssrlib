@@ -4,10 +4,6 @@ Uses the ssrlib Pipeline to extract embeddings for the cartesian product of
 {datasets} × {embedders} × {processors}, then prints a side-by-side
 comparison table of spectral metrics.
 
-This script downloads model weights and the CIFAR-10 test split on first run.
-With ``--n_samples 1000`` it takes ~2 minutes on CPU and ~10 seconds on a
-single GPU.
-
 Run:
     pip install -e ".[hf]"
     python examples/embedder_comparison.py --n_samples 1000

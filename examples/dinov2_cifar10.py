@@ -4,10 +4,6 @@ Demonstrates how to combine ssrlib's pipeline (for embedding extraction) with
 the EmbeddingProbe (for label-aware metrics like Neural Collapse) on a real
 dataset.
 
-This script downloads ~150 MB of CIFAR-10 and ~80 MB of DINOv2 weights on
-first run. With the default 2000-sample subset and DINOv2-small it takes
-about 1-2 minutes on CPU, ~10 seconds on a single GPU.
-
 Run:
     pip install -e ".[hf]"          # installs `datasets` and `transformers`
     python examples/dinov2_cifar10.py
