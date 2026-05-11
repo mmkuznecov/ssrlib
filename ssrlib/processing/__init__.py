@@ -1,135 +1,108 @@
-"""Processing for ssrlib with automatic discovery."""
+"""Processors for ssrlib.
+
+Public API:
+    - Processor classes (imported explicitly so IDEs see them)
+    - ``list_processors()``: names of registered processors
+    - ``create_processor(name, **kwargs)``: factory by string name
+    - ``get_available_processors()``: dict of name -> class
+
+Adding a new processor: implement ``BaseProcessor.process``, then register
+the class by appending it to ``_PROCESSOR_CLASSES`` below.
+"""
+
+from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Dict, List, Type, Any
-import warnings
+from typing import Dict, List, Type
+
+from .base import BaseProcessor
+from .covariance import CovarianceProcessor
+from .effective_rank import EffectiveRankProcessor
+from .leverage_scores import LeverageScoresProcessor
+from .map_reduce import MapReduceMixin
+from .neural_collapse import NeuralCollapseProcessor
+from .pairwise_stats import PairwiseDistanceStatsProcessor
+from .spectral_quality import (
+    AlphaReQProcessor,
+    CoherenceProcessor,
+    ConditionNumberProcessor,
+    EntropyDecompositionProcessor,
+    NESumProcessor,
+    ParticipationRatioProcessor,
+    RankMeProcessor,
+)
+from .spectrum import SpectrumProcessor
+from .stable_rank import StableRankProcessor
+from .zca import ZCAProcessor
 
 logger = logging.getLogger(__name__)
 
-# Import base class and registry system
-from .base import BaseProcessor
-from ..core.registry import BaseRegistry, discover_components
+_PROCESSOR_CLASSES: List[Type[BaseProcessor]] = [
+    # core
+    CovarianceProcessor,
+    ZCAProcessor,
+    SpectrumProcessor,
+    EffectiveRankProcessor,
+    StableRankProcessor,
+    LeverageScoresProcessor,
+    PairwiseDistanceStatsProcessor,
+    # spectral quality
+    NESumProcessor,
+    RankMeProcessor,
+    AlphaReQProcessor,
+    ParticipationRatioProcessor,
+    CoherenceProcessor,
+    ConditionNumberProcessor,
+    EntropyDecompositionProcessor,
+    # supervised metrics
+    NeuralCollapseProcessor,
+]
 
-# Type alias
-ProcessorRegistry = BaseRegistry[BaseProcessor]
-
-
-def discover_processor_classes() -> ProcessorRegistry:
-    """Discover all processor classes in the processing module."""
-    registry = ProcessorRegistry("processor")
-
-    return discover_components(
-        package_path=Path(__file__).parent,
-        package_name=__name__,
-        base_class=BaseProcessor,
-        registry=registry,
-    )
-
-
-# Perform discovery at import time
-logger.debug("Starting processor discovery...")
-_processor_registry = discover_processor_classes()
-
-
-# Public API functions
-def get_available_processors() -> Dict[str, Type[BaseProcessor]]:
-    """Get dictionary of all available processors.
-
-    Returns:
-        Dictionary mapping processor names to their classes
-    """
-    return _processor_registry._items.copy()
-
-
-def get_processor_descriptions() -> Dict[str, str]:
-    """Get dictionary of processor descriptions.
-
-    Returns:
-        Dictionary mapping processor names to their descriptions
-    """
-    return _processor_registry._descriptions.copy()
+_REGISTRY: Dict[str, Type[BaseProcessor]] = {
+    cls.__name__: cls for cls in _PROCESSOR_CLASSES
+}
 
 
 def list_processors() -> List[str]:
-    """List all available processor names.
-
-    Returns:
-        List of processor names
-    """
-    return _processor_registry.list_all()
+    """Return the names of all registered processors."""
+    return list(_REGISTRY.keys())
 
 
-def get_processor_info(name: str) -> Dict[str, Any]:
-    """Get detailed information about a processor.
-
-    Args:
-        name: Name of the processor
-
-    Returns:
-        Dictionary containing processor information
-
-    Raises:
-        ValueError: If processor not found
-    """
-    return _processor_registry.get_info(name)
-
-
-def print_available_processors() -> None:
-    """Print all available processors with descriptions."""
-    _processor_registry.print_registry()
+def get_available_processors() -> Dict[str, Type[BaseProcessor]]:
+    """Return a dict mapping processor names to their classes."""
+    return dict(_REGISTRY)
 
 
 def create_processor(name: str, **kwargs) -> BaseProcessor:
-    """Create a processor instance by name.
-
-    Args:
-        name: Name of the processor
-        **kwargs: Processor-specific initialization arguments
-
-    Returns:
-        Initialized processor instance
-
-    Raises:
-        ValueError: If processor not found
-    """
-    processor_class = _processor_registry.get(name)
-    if processor_class is None:
-        available = ", ".join(_processor_registry.list_all())
-        raise ValueError(f"Unknown processor '{name}'. Available: {available}")
-    return processor_class(**kwargs)
+    """Instantiate a processor by class name."""
+    if name not in _REGISTRY:
+        raise ValueError(
+            f"Unknown processor '{name}'. Available: {', '.join(sorted(_REGISTRY))}"
+        )
+    return _REGISTRY[name](**kwargs)
 
 
-# Create dynamic exports
-_exported_classes = {}
-for name, processor_class in _processor_registry._items.items():
-    _exported_classes[name] = processor_class
-
-# Update module globals for direct imports
-globals().update(_exported_classes)
-
-# Create __all__ dynamically
 __all__ = [
     "BaseProcessor",
-    "get_available_processors",
-    "get_processor_descriptions",
+    "MapReduceMixin",
+    # processors
+    "CovarianceProcessor",
+    "ZCAProcessor",
+    "SpectrumProcessor",
+    "EffectiveRankProcessor",
+    "StableRankProcessor",
+    "LeverageScoresProcessor",
+    "PairwiseDistanceStatsProcessor",
+    "NESumProcessor",
+    "RankMeProcessor",
+    "AlphaReQProcessor",
+    "ParticipationRatioProcessor",
+    "CoherenceProcessor",
+    "ConditionNumberProcessor",
+    "EntropyDecompositionProcessor",
+    "NeuralCollapseProcessor",
+    # registry helpers
     "list_processors",
-    "get_processor_info",
-    "print_available_processors",
     "create_processor",
-    *_processor_registry.list_all(),
+    "get_available_processors",
 ]
-
-# Log results
-if logger.isEnabledFor(logging.INFO):
-    processors = _processor_registry.list_all()
-    logger.info(f"Processor discovery complete: {len(processors)} processors found")
-    logger.info(f"  Available: {', '.join(sorted(processors))}")
-
-# Warn about errors
-if _processor_registry._discovery_errors:
-    warnings.warn(
-        f"Some processor modules failed to import: {len(_processor_registry._discovery_errors)} errors. "
-        f"Run logging.getLogger('{__name__}').setLevel(logging.DEBUG) for details.",
-        ImportWarning,
-    )

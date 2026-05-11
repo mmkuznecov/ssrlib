@@ -1,102 +1,52 @@
+"""SimCLR / NT-Xent contrastive loss."""
+
+from __future__ import annotations
+
+from typing import Any, ClassVar, Dict
+
 import torch
 import torch.nn.functional as F
-from typing import Optional
 
-from .base import ContrastiveLossBase, DistanceMetric
+from .base import BaseLoss
 
 
-class ContrastiveLoss(ContrastiveLossBase):
-    """
-    Contrastive Loss for learning embeddings.
+class ContrastiveLoss(BaseLoss):
+    """NT-Xent (normalized temperature-scaled cross-entropy) loss.
 
-    The contrastive loss pulls together embeddings of similar samples (positive pairs)
-    and pushes apart embeddings of dissimilar samples (negative pairs).
+    Reference: SimCLR (Chen et al. 2020).
 
-    For positive pairs (label=0): minimize distance
-    For negative pairs (label=1): maximize distance up to margin
-
-    Loss = (1-label) * d^2 + label * max(0, margin - d)^2
-
-    Args:
-        margin: Minimum margin for negative pairs
-        distance_metric: Distance metric to use
-        reduction: Loss reduction method
-        normalize: Whether to L2 normalize embeddings
-
-    References:
-        Hadsell et al. "Dimensionality Reduction by Learning an Invariant Mapping"
+    Expects two views ``z1, z2`` of shape ``(B, D)`` such that ``z1[i]`` and
+    ``z2[i]`` form a positive pair.
     """
 
-    def __init__(
-        self,
-        margin: float = 2.0,
-        distance_metric: DistanceMetric = DistanceMetric.EUCLIDEAN,
-        reduction: str = "mean",
-        normalize: bool = False,
-    ):
-        """Initialize contrastive loss.
+    _loss_category: ClassVar[str] = "contrastive"
+    _loss_modality: ClassVar[str] = "any"
+    _loss_properties: ClassVar[Dict[str, Any]] = {"requires_two_views": True}
 
-        Args:
-            margin: Margin for negative pairs (default: 2.0)
-            distance_metric: Distance metric to use
-            reduction: Reduction method ('mean', 'sum', 'none')
-            normalize: Whether to L2 normalize embeddings
-        """
-        super().__init__(
-            margin=margin,
-            distance_metric=distance_metric,
-            reduction=reduction,
-            normalize=normalize,
-        )
+    def __init__(self, temperature: float = 0.5, **kwargs):
+        super().__init__("ContrastiveLoss", **kwargs)
+        if temperature <= 0:
+            raise ValueError("temperature must be positive")
+        self.temperature = float(temperature)
+        self._metadata.update({"temperature": self.temperature})
 
-    def forward(
-        self, output1: torch.Tensor, output2: torch.Tensor, label: torch.Tensor
-    ) -> torch.Tensor:
-        """
-        Forward pass for contrastive loss.
+    def forward(self, z1: torch.Tensor, z2: torch.Tensor) -> torch.Tensor:
+        if z1.shape != z2.shape:
+            raise ValueError(f"Shape mismatch: {z1.shape} vs {z2.shape}")
+        batch_size = z1.shape[0]
 
-        Args:
-            output1: First set of embeddings (N, D)
-            output2: Second set of embeddings (N, D)
-            label: Binary labels (N,) where 0=similar, 1=dissimilar
+        z1 = F.normalize(z1, dim=1)
+        z2 = F.normalize(z2, dim=1)
+        z = torch.cat([z1, z2], dim=0)  # (2B, D)
 
-        Returns:
-            Contrastive loss
-        """
-        # Apply normalization if enabled
-        output1, output2 = self.apply_normalization(output1, output2)
+        sim = z @ z.T / self.temperature  # (2B, 2B)
 
-        # Compute distance
-        distance = self.compute_distance(output1, output2, self.distance_metric)
+        # Mask self-similarity
+        mask = torch.eye(2 * batch_size, dtype=torch.bool, device=z.device)
+        sim = sim.masked_fill(mask, float("-inf"))
 
-        # Contrastive loss computation
-        # For similar pairs (label=0): penalize large distances
-        pos_loss = (1 - label) * torch.pow(distance, 2)
-
-        # For dissimilar pairs (label=1): penalize small distances (below margin)
-        neg_loss = label * torch.pow(torch.clamp(self.margin - distance, min=0.0), 2)
-
-        # Combined loss
-        loss = pos_loss + neg_loss
-
-        return self.apply_reduction(loss)
-
-
-# Alternative implementation with squared euclidean distance (matches user's original)
-class ContrastiveLossOriginal(torch.nn.Module):
-    """
-    Original contrastive loss implementation (for compatibility).
-
-    This matches the user's original implementation exactly.
-    """
-
-    def __init__(self, margin=2.0):
-        super(ContrastiveLossOriginal, self).__init__()
-        self.margin = margin
-
-    def forward(self, output1, output2, label):
-        euclidean_distance = F.pairwise_distance(output1, output2)
-        pos = (1 - label) * torch.pow(euclidean_distance, 2)
-        neg = (label) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0), 2)
-        loss_contrastive = torch.mean(pos + neg)
-        return loss_contrastive
+        # Positives: i <-> i+B
+        targets = torch.cat(
+            [torch.arange(batch_size, 2 * batch_size), torch.arange(batch_size)]
+        ).to(z.device)
+        return F.cross_entropy(sim, targets)

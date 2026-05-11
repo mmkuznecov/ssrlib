@@ -1,6 +1,13 @@
-from .dinov2 import DINOv2Embedder
-from .clip import CLIPEmbedder
-from .vicreg import VICRegEmbedder
-from .dino import DINOEmbedder
+"""Computer-vision embedders."""
 
-__all__ = ["DINOv2Embedder", "CLIPEmbedder", "VICRegEmbedder", "DINOEmbedder"]
+from .clip import CLIPEmbedder
+from .dino import DINOEmbedder
+from .dinov2 import DINOv2Embedder
+from .vicreg import VICRegEmbedder
+
+__all__ = [
+    "CLIPEmbedder",
+    "DINOEmbedder",
+    "DINOv2Embedder",
+    "VICRegEmbedder",
+]

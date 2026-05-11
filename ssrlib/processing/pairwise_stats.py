@@ -1,14 +1,25 @@
-import numpy as np
+"""Summary statistics of pairwise distances between embeddings."""
+
+from __future__ import annotations
+
 from typing import Optional
+
+import numpy as np
+
 from .base import BaseProcessor
 
 
 class PairwiseDistanceStatsProcessor(BaseProcessor):
-    """
-    Computes summary statistics of pairwise distances between embeddings
-    on a (possibly subsampled) set of points.
+    """Mean / std / min / max of pairwise distances on a (subsampled) set of points.
 
-    Returns a 1D array [mean, std, min, max] for the chosen distance metric.
+    Returns a 1-D array ``[mean, std, min, max]`` for the chosen distance metric.
+
+    Args:
+        metric: 'cosine' or 'euclidean'.
+        max_samples: maximum number of points to use for pairwise stats.
+            If ``n_vectors > max_samples``, a random subset is taken.
+        center: whether to mean-center before computing distances.
+        seed: random seed for subsampling (None uses the global default RNG).
     """
 
     def __init__(
@@ -19,19 +30,10 @@ class PairwiseDistanceStatsProcessor(BaseProcessor):
         seed: Optional[int] = 0,
         **kwargs,
     ):
-        """
-        Args:
-            metric: 'cosine' or 'euclidean'.
-            max_samples: maximum number of points to use for pairwise stats.
-                         If n_vectors > max_samples, a random subset is taken.
-            center: whether to mean-center before computing distances.
-            seed: random seed for subsampling (None = use np.random default).
-        """
         super().__init__("PairwiseDistanceStats", **kwargs)
         metric = metric.lower()
         if metric not in ("cosine", "euclidean"):
             raise ValueError("metric must be 'cosine' or 'euclidean'")
-
         if max_samples <= 1:
             raise ValueError("max_samples must be > 1")
 
@@ -56,7 +58,6 @@ class PairwiseDistanceStatsProcessor(BaseProcessor):
         n = X.shape[0]
         if n <= self.max_samples:
             return X
-
         rng = np.random.default_rng(self.seed)
         idx = rng.choice(n, size=self.max_samples, replace=False)
         return X[idx]
@@ -73,7 +74,7 @@ class PairwiseDistanceStatsProcessor(BaseProcessor):
         m = X.shape[0]
 
         if m < 2:
-            # Нечего считать — вернём нули
+            # Not enough samples to form a pair — return zeros.
             stats = np.zeros(4, dtype=np.float64)
             self._metadata.update(
                 {
@@ -84,24 +85,22 @@ class PairwiseDistanceStatsProcessor(BaseProcessor):
             )
             return stats
 
-        # Вычисляем попарные расстояния/сходства
+        # Pairwise distance / similarity matrix
         if self.metric == "cosine":
-            # Нормируем строки
             norms = np.linalg.norm(X, axis=1, keepdims=True)
             norms = np.where(norms == 0.0, 1.0, norms)
             Y = X / norms
-            sim = Y @ Y.T  # (m, m), cosine similarity
-            # Превращаем в расстояние
+            sim = Y @ Y.T
             dist = 1.0 - sim
-        else:  # 'euclidean'
+        else:  # euclidean
             # ||x_i - x_j||^2 = ||x_i||^2 + ||x_j||^2 - 2 x_i x_j^T
-            sq_norms = np.sum(X * X, axis=1, keepdims=True)  # (m, 1)
+            sq_norms = np.sum(X * X, axis=1, keepdims=True)
             sq_dists = sq_norms + sq_norms.T - 2.0 * (X @ X.T)
-            # Численно из-за округления sq_dists могут чуть уходить в минус
+            # Numerical noise can push tiny values negative
             sq_dists = np.maximum(sq_dists, 0.0)
             dist = np.sqrt(sq_dists)
 
-        # Берём только верхний треугольник (без диагонали)
+        # Take only the strict upper triangle (no diagonal, no duplicates)
         iu = np.triu_indices(m, k=1)
         dist_vec = dist[iu]
 
